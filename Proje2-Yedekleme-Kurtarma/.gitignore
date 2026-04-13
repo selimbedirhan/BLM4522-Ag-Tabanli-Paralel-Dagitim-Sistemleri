@@ -1,0 +1,7 @@
+backups/
+!backups/.gitkeep
+logs/
+!logs/.gitkeep
+*.dump
+*.sql.gz
+*.tar

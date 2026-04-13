@@ -1,0 +1,54 @@
+# ============================================================================
+# PostgreSQL Yedekleme Yapılandırma Ayarları
+# Bu dosya postgresql.conf'a eklenecek ayarları gösterir
+# ============================================================================
+
+# WAL (Write-Ahead Logging) Ayarları
+# ------------------------------------
+# PITR ve artık yedekleme için WAL Level en az 'replica' olmalı
+wal_level = replica
+
+# WAL arşivleme etkinleştirme
+archive_mode = on
+
+# WAL dosyalarını arşiv dizinine kopyalama komutu
+# %p = WAL dosya yolu, %f = WAL dosya adı
+archive_command = 'cp %p /path/to/wal_archive/%f'
+
+# WAL Performans Ayarları
+# ------------------------------------
+# WAL sıkıştırma (disk alanı tasarrufu)
+wal_compression = on
+
+# Checkpoint ayarları
+checkpoint_timeout = 5min
+max_wal_size = 1GB
+min_wal_size = 80MB
+
+# Checkpoint tamamlanma hedefi (0.0 - 1.0)
+checkpoint_completion_target = 0.9
+
+# WAL Yazıcı Ayarları
+# ------------------------------------
+wal_writer_delay = 200ms
+wal_writer_flush_after = 1MB
+
+# Replication Ayarları (Yedekleme için)
+# ------------------------------------
+# pg_basebackup için gerekli
+max_wal_senders = 3
+wal_keep_size = 256MB
+
+# Logging Ayarları
+# ------------------------------------
+log_checkpoints = on
+log_connections = on
+log_disconnections = on
+log_statement = 'ddl'
+log_min_duration_statement = 1000
+
+# Bellek Ayarları
+# ------------------------------------
+shared_buffers = 256MB
+work_mem = 4MB
+maintenance_work_mem = 128MB

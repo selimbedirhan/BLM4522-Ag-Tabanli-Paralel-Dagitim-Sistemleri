@@ -1,0 +1,25 @@
+# ============================================================================
+# PostgreSQL Client Authentication Configuration File (pg_hba.conf)
+# Yedekleme ve Kurtarma için Erişim Yapılandırması
+# ============================================================================
+
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+
+# Yerel bağlantılar (Unix domain socket)
+local   all             all                                     trust
+
+# IPv4 yerel bağlantılar
+host    all             all             127.0.0.1/32            trust
+
+# IPv6 yerel bağlantılar
+host    all             all             ::1/128                 trust
+
+# Replication bağlantıları (pg_basebackup için gerekli)
+local   replication     all                                     trust
+host    replication     all             127.0.0.1/32            trust
+host    replication     all             ::1/128                 trust
+
+# ============================================================================
+# NOT: Üretim ortamında 'trust' yerine 'md5' veya 'scram-sha-256' kullanılmalıdır.
+# Bu yapılandırma yerel geliştirme ve test ortamı içindir.
+# ============================================================================
