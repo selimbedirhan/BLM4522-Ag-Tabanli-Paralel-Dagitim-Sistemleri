@@ -1,7 +1,4 @@
 #!/bin/bash
-# ============================================================================
-# BLM4522 - Proje 2: Yedekleme Durumu Raporlama
-# ============================================================================
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -40,7 +37,6 @@ format_size() {
     fi
 }
 
-# 1. Veritabani Bilgileri
 echo -e "\n${YELLOW}[1/5] Veritabani Genel Bilgileri${NC}"
 echo -e "\n  ${BLUE}Veritabani Boyutlari:${NC}"
 psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT datname AS \"Veritabani\", pg_size_pretty(pg_database_size(datname)) AS \"Boyut\" FROM pg_database WHERE datname NOT LIKE 'template%' ORDER BY pg_database_size(datname) DESC;" 2>/dev/null
@@ -48,7 +44,6 @@ psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT datname AS \"Veritabani\", pg_size_p
 echo -e "\n  ${BLUE}Tablo Boyutlari:${NC}"
 psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT relname AS \"Tablo\", pg_size_pretty(pg_total_relation_size(relid)) AS \"Toplam Boyut\", pg_size_pretty(pg_relation_size(relid)) AS \"Veri Boyutu\", pg_size_pretty(pg_indexes_size(relid)) AS \"Indeks Boyutu\", n_live_tup AS \"Kayit Sayisi\" FROM pg_stat_user_tables ORDER BY pg_total_relation_size(relid) DESC;" 2>/dev/null
 
-# 2. Yedek Dosyalari
 echo -e "\n${YELLOW}[2/5] Yedek Dosyalari Listesi${NC}"
 echo -e "\n  ${BLUE}Full Yedekler:${NC}"
 if ls "$BACKUP_DIR/full/"*.dump 2>/dev/null | head -5 > /dev/null 2>&1; then
@@ -83,18 +78,15 @@ for f in "$BACKUP_DIR/auto/"*.dump; do
     fi
 done
 
-# 3. Istatistikler
 echo -e "\n${YELLOW}[3/5] Yedekleme Istatistikleri${NC}"
 TOTAL_BACKUP_COUNT=$(find "$BACKUP_DIR" -type f \( -name "*.dump" -o -name "*.sql" -o -name "*.sql.gz" -o -name "*.tar" \) 2>/dev/null | wc -l | tr -d ' ')
 TOTAL_BACKUP_SIZE=$(du -sh "$BACKUP_DIR" 2>/dev/null | awk '{print $1}')
 echo -e "  Toplam yedek dosyasi: ${BLUE}$TOTAL_BACKUP_COUNT${NC}"
 echo -e "  Toplam yedek boyutu: ${BLUE}$TOTAL_BACKUP_SIZE${NC}"
 
-# 4. PostgreSQL Durum
 echo -e "\n${YELLOW}[4/5] PostgreSQL Durum Bilgileri${NC}"
 psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT 'Surum' AS bilgi, version() AS deger UNION ALL SELECT 'WAL Level', setting FROM pg_settings WHERE name = 'wal_level' UNION ALL SELECT 'Archive Mode', setting FROM pg_settings WHERE name = 'archive_mode' UNION ALL SELECT 'Max Connections', setting FROM pg_settings WHERE name = 'max_connections' UNION ALL SELECT 'Shared Buffers', setting FROM pg_settings WHERE name = 'shared_buffers' UNION ALL SELECT 'Checkpoint Timeout', setting FROM pg_settings WHERE name = 'checkpoint_timeout';" 2>/dev/null
 
-# 5. HTML Rapor
 echo -e "\n${YELLOW}[5/5] HTML Rapor Olusturma${NC}"
 
 DB_SIZE=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT pg_size_pretty(pg_database_size('$DB_NAME'));" 2>/dev/null)
@@ -106,7 +98,6 @@ SHBUF=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SHOW shared_buffers;" 2>/dev/
 CURRENT_YEAR=$(date '+%Y')
 CURRENT_DT=$(date '+%Y-%m-%d %H:%M:%S')
 
-# Write HTML header
 cat > "$REPORT_FILE" << 'HTMLEOF'
 <!DOCTYPE html>
 <html lang="tr">
@@ -135,7 +126,6 @@ cat > "$REPORT_FILE" << 'HTMLEOF'
         <h1>Yedekleme Durumu Raporu</h1>
 HTMLEOF
 
-# Write metrics
 echo "        <p style=\"text-align: center; color: #aaa;\">$CURRENT_DT | $DB_NAME | PostgreSQL</p>" >> "$REPORT_FILE"
 echo "        <div style=\"text-align: center; margin: 20px 0;\">" >> "$REPORT_FILE"
 echo "            <div class=\"metric\"><div class=\"value\">$DB_SIZE</div><div class=\"label\">Veritabani Boyutu</div></div>" >> "$REPORT_FILE"
@@ -143,7 +133,6 @@ echo "            <div class=\"metric\"><div class=\"value\">$TOTAL_BACKUP_COUNT
 echo "            <div class=\"metric\"><div class=\"value\">$TOTAL_BACKUP_SIZE</div><div class=\"label\">Yedek Boyutu</div></div>" >> "$REPORT_FILE"
 echo "        </div>" >> "$REPORT_FILE"
 
-# Table stats
 echo "        <h2>Veritabani Tablolari</h2>" >> "$REPORT_FILE"
 echo "        <div class=\"card\"><table>" >> "$REPORT_FILE"
 echo "            <tr><th>Tablo</th><th>Kayit Sayisi</th><th>Boyut</th></tr>" >> "$REPORT_FILE"
@@ -154,7 +143,6 @@ done
 
 echo "        </table></div>" >> "$REPORT_FILE"
 
-# Backup files
 echo "        <h2>Yedek Dosyalari</h2>" >> "$REPORT_FILE"
 echo "        <div class=\"card\"><table>" >> "$REPORT_FILE"
 echo "            <tr><th>Dosya</th><th>Boyut</th><th>Tarih</th><th>Durum</th></tr>" >> "$REPORT_FILE"
@@ -174,7 +162,6 @@ done
 
 echo "        </table></div>" >> "$REPORT_FILE"
 
-# PostgreSQL config
 echo "        <h2>PostgreSQL Yapilandirma</h2>" >> "$REPORT_FILE"
 echo "        <div class=\"card\"><table>" >> "$REPORT_FILE"
 echo "            <tr><th>Parametre</th><th>Deger</th></tr>" >> "$REPORT_FILE"
@@ -185,7 +172,6 @@ echo "            <tr><td>Checkpoint Timeout</td><td>$CHKPT</td></tr>" >> "$REPO
 echo "            <tr><td>Shared Buffers</td><td>$SHBUF</td></tr>" >> "$REPORT_FILE"
 echo "        </table></div>" >> "$REPORT_FILE"
 
-# Footer
 echo "        <div class=\"footer\"><p>BLM4522 - Proje 2 | $CURRENT_YEAR</p></div>" >> "$REPORT_FILE"
 echo "    </div></body></html>" >> "$REPORT_FILE"
 

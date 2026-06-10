@@ -1,10 +1,5 @@
 #!/bin/bash
-# ============================================================================
-# Otomatik Yedekleme Scripti - Cron tarafından çağrılır
-# Her çalıştığında tarih damgalı yedek alır, eski yedekleri temizler
-# ============================================================================
 
-# Değişkenler
 DB_NAME="eticaret_db"
 DB_USER=$(whoami)
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -17,10 +12,8 @@ LOG_FILE="$LOG_DIR/auto_backup_${TIMESTAMP}.log"
 
 export PATH="$PG_BIN:$PATH"
 
-# Dizinleri oluştur
 mkdir -p "$BACKUP_DIR" "$LOG_DIR"
 
-# Log fonksiyonu
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
@@ -28,19 +21,16 @@ log() {
 log "====== OTOMATİK YEDEKLEME BAŞLADI ======"
 log "Veritabanı: $DB_NAME"
 
-# PostgreSQL erişilebilirlik kontrolü
 if ! pg_isready -q; then
     log "HATA: PostgreSQL sunucusu erişilemez!"
     exit 1
 fi
 
-# Veritabanı varlık kontrolü
 if ! psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1;" > /dev/null 2>&1; then
     log "HATA: $DB_NAME veritabanına bağlanılamadı!"
     exit 1
 fi
 
-# Tam yedekleme
 BACKUP_FILE="$BACKUP_DIR/${DB_NAME}_auto_${TIMESTAMP}.dump"
 log "Yedekleme başlıyor: $BACKUP_FILE"
 
@@ -59,7 +49,6 @@ if [ $RESULT -eq 0 ]; then
     log "  Boyut: ${FILE_SIZE_MB} MB"
     log "  Süre: ${DURATION} saniye"
     
-    # Yedek doğrulama
     pg_restore --list "$BACKUP_FILE" > /dev/null 2>&1
     if [ $? -eq 0 ]; then
         log "DOĞRULAMA: Yedek dosyası geçerli ✓"
@@ -68,11 +57,9 @@ if [ $RESULT -eq 0 ]; then
     fi
 else
     log "HATA: Yedekleme BAŞARISIZ! (exit code: $RESULT)"
-    # Başarısız yedek dosyasını sil
     rm -f "$BACKUP_FILE"
 fi
 
-# Eski yedekleri temizle (retention policy)
 log "Eski yedekler temizleniyor ($RETENTION_DAYS günden eski)..."
 DELETED_COUNT=0
 find "$BACKUP_DIR" -name "*.dump" -mtime +$RETENTION_DAYS -type f | while read file; do
@@ -81,10 +68,8 @@ find "$BACKUP_DIR" -name "*.dump" -mtime +$RETENTION_DAYS -type f | while read f
     DELETED_COUNT=$((DELETED_COUNT + 1))
 done
 
-# Eski logları temizle (30 günden eski)
 find "$LOG_DIR" -name "auto_backup_*.log" -mtime +30 -type f -delete
 
-# Mevcut yedek sayısını raporla
 BACKUP_COUNT=$(find "$BACKUP_DIR" -name "*.dump" -type f | wc -l | tr -d ' ')
 TOTAL_SIZE=$(du -sh "$BACKUP_DIR" 2>/dev/null | awk '{print $1}')
 log "Toplam yedek sayısı: $BACKUP_COUNT | Toplam boyut: $TOTAL_SIZE"

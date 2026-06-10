@@ -1,10 +1,6 @@
--- ============================================================================
--- Proje 6: Ornek Veri Yukleme (Kutuphane DB v1.0)
--- ============================================================================
 
 \c kutuphane_db;
 
--- Kategoriler (12)
 INSERT INTO kategoriler (kategori_adi, aciklama) VALUES
 ('Roman', 'Yerli ve yabanci romanlar'),('Bilim Kurgu', 'Bilim kurgu ve fantastik'),
 ('Tarih', 'Tarih kitaplari'),('Bilim', 'Populer bilim ve akademik'),
@@ -13,7 +9,6 @@ INSERT INTO kategoriler (kategori_adi, aciklama) VALUES
 ('Sanat', 'Sanat ve muzik'),('Teknoloji', 'Bilgisayar ve teknoloji'),
 ('Hukuk', 'Hukuk kitaplari'),('Ekonomi', 'Ekonomi ve isletme');
 
--- Yazarlar (40)
 INSERT INTO yazarlar (ad, soyad, dogum_tarihi, ulke)
 SELECT
     (ARRAY['Orhan','Yasar','Elif','Nazim','Sabiha','Ahmet','Halide','Oguz','Peyami',
@@ -34,7 +29,6 @@ SELECT
            'Turkiye','Turkiye','Turkiye','Turkiye','Turkiye','Turkiye','Turkiye','Turkiye','Turkiye','Turkiye'])[i]
 FROM generate_series(1, 40) AS s(i);
 
--- Kitaplar (200)
 INSERT INTO kitaplar (isbn, baslik, yazar_id, kategori_id, yayin_yili, sayfa_sayisi, kopya_sayisi, mevcut_kopya)
 SELECT
     '978-' || LPAD(i::TEXT, 10, '0'),
@@ -49,7 +43,6 @@ SELECT
     1 + (i % 4)
 FROM generate_series(1, 200) AS s(i);
 
--- Uyeler (400)
 INSERT INTO uyeler (tc_kimlik, ad, soyad, email, telefon, adres)
 SELECT
     LPAD((30000000000 + i)::TEXT, 11, '0'),
@@ -63,7 +56,6 @@ SELECT
     (ARRAY['Ankara','Istanbul','Izmir','Bursa','Antalya'])[1 + (i % 5)]
 FROM generate_series(1, 400) AS s(i);
 
--- Odunc Islemleri (2000)
 INSERT INTO odunc_islemleri (kitap_id, uye_id, odunc_tarihi, iade_tarihi, beklenen_iade, durum)
 SELECT
     1 + (i % 200),
@@ -78,7 +70,6 @@ SELECT
          ELSE 'iade_edildi' END
 FROM generate_series(1, 2000) AS s(i);
 
--- Rapor
 SELECT '=== KUTUPHANE DB v1.0 VERI RAPORU ===' AS bilgi;
 SELECT 'Kategoriler' AS tablo, COUNT(*) AS kayit FROM kategoriler
 UNION ALL SELECT 'Yazarlar', COUNT(*) FROM yazarlar

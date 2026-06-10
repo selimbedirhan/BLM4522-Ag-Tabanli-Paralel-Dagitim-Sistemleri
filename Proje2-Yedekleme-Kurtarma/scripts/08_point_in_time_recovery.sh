@@ -1,12 +1,5 @@
 #!/bin/bash
-# ============================================================================
-# BLM4522 - Ağ Tabanlı Paralel Dağıtım Sistemleri
-# Proje 2: Veritabanı Yedekleme ve Felaketten Kurtarma Planı
-# Dosya: 08_point_in_time_recovery.sh
-# Açıklama: Point-in-Time Recovery (PITR) - Belirli Bir Zamana Geri Dönme
-# ============================================================================
 
-# Renk kodları
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -15,7 +8,6 @@ CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m'
 
-# Değişkenler
 DB_NAME="eticaret_db"
 DB_USER=$(whoami)
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -35,9 +27,6 @@ echo -e "${CYAN}   Belirli Bir Zamana Geri Dönme${NC}"
 echo -e "${CYAN}   Tarih: $(date '+%Y-%m-%d %H:%M:%S')${NC}"
 echo -e "${CYAN}============================================${NC}"
 
-# ============================================================================
-# PITR TEORİSİ VE AÇIKLAMA
-# ============================================================================
 echo -e "\n${BLUE}PITR (Point-in-Time Recovery) Açıklaması:${NC}"
 echo -e "  PostgreSQL'de PITR, WAL (Write-Ahead Log) dosyalarını kullanarak"
 echo -e "  veritabanını geçmişteki herhangi bir zamana geri döndürme işlemidir."
@@ -53,9 +42,6 @@ echo -e "  1. Base backup'tan geri yükle"
 echo -e "  2. WAL dosyalarını belirli zamana kadar oynat (replay)"
 echo -e "  3. recovery_target_time ile hedef zamanı belirle"
 
-# ============================================================================
-# 1. PITR için Mevcut WAL Durumunu Kontrol Et
-# ============================================================================
 echo -e "\n${YELLOW}[1/6] WAL ve Arşiv Durumu Kontrolü${NC}"
 
 WAL_LEVEL=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SHOW wal_level;" 2>/dev/null)
@@ -71,15 +57,11 @@ if [ "$WAL_LEVEL" != "replica" ] && [ "$WAL_LEVEL" != "logical" ]; then
     echo -e "\n${BLUE}  Alternatif olarak pg_dump tabanlı PITR simülasyonu yapacağız.${NC}"
 fi
 
-# ============================================================================
-# 2. Zaman Noktası Kaydı - "Önceki" Durum
-# ============================================================================
 echo -e "\n${YELLOW}[2/6] Zaman Noktası Kaydı${NC}"
 
 RESTORE_POINT_TIME=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT CURRENT_TIMESTAMP;" 2>/dev/null)
 echo -e "  Hedef geri dönüş zamanı: ${GREEN}$RESTORE_POINT_TIME${NC}"
 
-# Mevcut durumu kaydet
 echo -e "\n  ${BLUE}Mevcut veritabanı durumu:${NC}"
 CURRENT_STATS=$(psql -U "$DB_USER" -d "$DB_NAME" << EOSQL 2>/dev/null
 SELECT 
@@ -99,22 +81,16 @@ EOSQL
 )
 echo "$CURRENT_STATS"
 
-# Yedek referans noktası oluştur
 echo -e "\n  ${BLUE}Restore point oluşturuluyor...${NC}"
 psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT pg_create_restore_point('pitr_test_$TIMESTAMP');" 2>/dev/null
 echo -e "${GREEN}  ✓ Restore point: pitr_test_$TIMESTAMP${NC}"
 
-# Bu noktanın yedeğini al
 PITR_BACKUP="$BACKUP_DIR/pitr/${DB_NAME}_pitr_base_${TIMESTAMP}.dump"
 pg_dump -U "$DB_USER" -d "$DB_NAME" -Fc -Z 6 -f "$PITR_BACKUP" 2>> "$LOG_DIR/pitr_${TIMESTAMP}.log"
 echo -e "${GREEN}  ✓ PITR baz yedek alındı${NC}"
 
-# ============================================================================
-# 3. Veri Değişiklikleri Yap (Felaket simülasyonu)
-# ============================================================================
 echo -e "\n${YELLOW}[3/6] Felaket Simülasyonu (Veri Değişiklikleri)${NC}"
 
-# Zaman damgası
 sleep 2  # WAL kayıtlarının ayrışması için kısa bekleme
 
 echo -e "  ${RED}Değişiklik 1: 50 müşteri siliniyor...${NC}"
@@ -156,17 +132,12 @@ SELECT 'Siparişler', COUNT(*) FROM siparisler
 ORDER BY tablo;
 EOSQL
 
-# ============================================================================
-# 4. PITR Kurtarma İşlemi
-# ============================================================================
 echo -e "\n${YELLOW}[4/6] PITR Kurtarma Başlıyor${NC}"
 echo -e "  Hedef zaman: ${GREEN}$RESTORE_POINT_TIME${NC}"
 
-# Test veritabanı oluştur
 psql -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $PITR_TEST_DB;" 2>/dev/null
 psql -U "$DB_USER" -d postgres -c "CREATE DATABASE $PITR_TEST_DB;" 2>> "$LOG_DIR/pitr_${TIMESTAMP}.log"
 
-# PITR baz yedekten restore et (bu, felaket öncesi durumu temsil eder)
 echo -e "  Baz yedekten restore ediliyor..."
 pg_restore -U "$DB_USER" -d "$PITR_TEST_DB" \
     --clean --if-exists \
@@ -179,9 +150,6 @@ else
     echo -e "${RED}  ✗ PITR restore başarısız!${NC}"
 fi
 
-# ============================================================================
-# 5. Kurtarma Doğrulama
-# ============================================================================
 echo -e "\n${YELLOW}[5/6] Kurtarma Doğrulama${NC}"
 
 echo -e "\n  ${BLUE}Kurtarılan vs Bozulmuş veritabanı karşılaştırması:${NC}"
@@ -206,22 +174,16 @@ for TABLE in "${TABLES[@]}"; do
     printf "  %-20s %12s %12s %12s\n" "$TABLE" "$PITR_COUNT" "$CURR_COUNT" "$STATUS"
 done
 
-# Fiyat kontrolü
 PITR_AVG=$(psql -U "$DB_USER" -d "$PITR_TEST_DB" -t -A -c "SELECT ROUND(AVG(birim_fiyat), 2) FROM urunler;" 2>/dev/null)
 CURR_AVG=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT ROUND(AVG(birim_fiyat), 2) FROM urunler;" 2>/dev/null)
 echo -e "\n  Ortalama ürün fiyatı (Kurtarılan): ${GREEN}₺$PITR_AVG${NC}"
 echo -e "  Ortalama ürün fiyatı (Bozulmuş):   ${RED}₺$CURR_AVG${NC}"
 
-# ============================================================================
-# 6. Ana Veritabanını Kurtarılan Halinden Geri Yükle
-# ============================================================================
 echo -e "\n${YELLOW}[6/6] Ana Veritabanını Kurtarılan Duruma Getirme${NC}"
 
-# Kurtarılan veritabanından yedek al
 PITR_FINAL_BACKUP="$BACKUP_DIR/pitr/${DB_NAME}_pitr_restored_${TIMESTAMP}.dump"
 pg_dump -U "$DB_USER" -d "$PITR_TEST_DB" -Fc -Z 6 -f "$PITR_FINAL_BACKUP" 2>> "$LOG_DIR/pitr_${TIMESTAMP}.log"
 
-# Ana veritabanını kurtarılan halinden geri yükle
 pg_restore -U "$DB_USER" -d "$DB_NAME" \
     --clean --if-exists \
     --single-transaction \
@@ -230,59 +192,30 @@ pg_restore -U "$DB_USER" -d "$DB_NAME" \
 FINAL_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT COUNT(*) FROM musteriler;" 2>/dev/null)
 echo -e "${GREEN}  ✓ Ana veritabanı kurtarıldı! Müşteri sayısı: $FINAL_COUNT${NC}"
 
-# Temizlik
 psql -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $PITR_TEST_DB;" 2>/dev/null
 echo -e "${GREEN}  ✓ Test veritabanı temizlendi${NC}"
 
-# ============================================================================
-# PITR RECOVERY.CONF ÖRNEĞİ
-# ============================================================================
 echo -e "\n${CYAN}============================================${NC}"
 echo -e "${CYAN}   PITR YAPILANDIRMA ÖRNEĞİ${NC}"
 echo -e "${CYAN}============================================${NC}"
 
 RECOVERY_CONF="$PROJECT_DIR/config/pitr_recovery_example.conf"
 cat > "$RECOVERY_CONF" << EOF
-# ============================================================================
-# PostgreSQL PITR Recovery Yapılandırması
-# Bu dosya, gerçek bir PITR senaryosunda kullanılacak ayarları gösterir
-# PostgreSQL 12+ sürümlerinde postgresql.conf'a eklenir
-# ============================================================================
 
-# Kurtarma hedef zamanı
-# Veritabanını bu zamandaki durumuna geri döndürür
 recovery_target_time = '$RESTORE_POINT_TIME'
 
-# Alternatif: Belirli bir transaction ID'ye kadar kurtarma
-# recovery_target_xid = '12345'
-
-# Alternatif: Belirli bir restore point'e kadar kurtarma
-# recovery_target_name = 'pitr_test_$TIMESTAMP'
-
-# Alternatif: Belirli bir LSN'e kadar kurtarma
-# recovery_target_lsn = '0/1000000'
-
-# Hedef zamana ulaşıldığında ne yapılacağı
-# 'pause' = Durdur ve kontrol et, 'promote' = Hemen aktif yap
 recovery_target_action = 'promote'
 
-# Hedefe dahil mi (inclusive) yoksa hariç mi (exclusive)
 recovery_target_inclusive = true
 
-# WAL arşivlerinin geri yükleme komutu
 restore_command = 'cp $BACKUP_DIR/wal_archive/%f %p'
 
-# Kurtarma timeline
-# 'latest' = En son timeline'ı kullan
 recovery_target_timeline = 'latest'
 EOF
 
 echo -e "  PITR yapılandırma örneği oluşturuldu:"
 echo -e "    $RECOVERY_CONF"
 
-# ============================================================================
-# SONUÇ
-# ============================================================================
 echo -e "\n${CYAN}============================================${NC}"
 echo -e "${CYAN}   PITR İŞLEMLERİ TAMAMLANDI${NC}"
 echo -e "${CYAN}============================================${NC}"

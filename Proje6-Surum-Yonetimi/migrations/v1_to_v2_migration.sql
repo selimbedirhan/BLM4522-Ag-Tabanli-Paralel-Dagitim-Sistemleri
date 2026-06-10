@@ -1,12 +1,6 @@
--- ============================================================================
--- MIGRATION: v1.0 -> v2.0
--- Yeni ozellikler: ceza sistemi, yayinevleri, kitap-yazar coka-cok iliskisi,
--- rezervasyon sistemi, tam metin arama
--- ============================================================================
 
 \c kutuphane_db;
 
--- Surum kontrolu
 DO $$
 DECLARE cur_ver TEXT;
 BEGIN
@@ -19,9 +13,6 @@ END $$;
 
 BEGIN;
 
--- ============================================================================
--- 1. YENI TABLO: Yayinevleri
--- ============================================================================
 CREATE TABLE yayinevleri (
     yayinevi_id SERIAL PRIMARY KEY,
     yayinevi_adi VARCHAR(200) NOT NULL,
@@ -33,7 +24,6 @@ CREATE TABLE yayinevleri (
     olusturma_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. YENI TABLO: Kitap-Yazar Coka-Cok iliskisi
 CREATE TABLE kitap_yazarlar (
     kitap_id INTEGER NOT NULL REFERENCES kitaplar(kitap_id) ON DELETE CASCADE,
     yazar_id INTEGER NOT NULL REFERENCES yazarlar(yazar_id),
@@ -41,7 +31,6 @@ CREATE TABLE kitap_yazarlar (
     PRIMARY KEY (kitap_id, yazar_id, rol)
 );
 
--- 3. YENI TABLO: Ceza sistemi
 CREATE TABLE cezalar (
     ceza_id SERIAL PRIMARY KEY,
     islem_id INTEGER NOT NULL REFERENCES odunc_islemleri(islem_id),
@@ -54,7 +43,6 @@ CREATE TABLE cezalar (
     odeme_tarihi TIMESTAMP
 );
 
--- 4. YENI TABLO: Rezervasyon sistemi
 CREATE TABLE rezervasyonlar (
     rezervasyon_id SERIAL PRIMARY KEY,
     kitap_id INTEGER NOT NULL REFERENCES kitaplar(kitap_id),
@@ -65,32 +53,21 @@ CREATE TABLE rezervasyonlar (
         CHECK (durum IN ('aktif', 'tamamlandi', 'iptal', 'suresi_doldu'))
 );
 
--- ============================================================================
--- MEVCUT TABLOLARA KOLON EKLEME
--- ============================================================================
-
--- kitaplar tablosuna yayinevi, dil, aciklama kolonlari
 ALTER TABLE kitaplar ADD COLUMN yayinevi_id INTEGER REFERENCES yayinevleri(yayinevi_id);
 ALTER TABLE kitaplar ADD COLUMN dil VARCHAR(30) DEFAULT 'Turkce';
 ALTER TABLE kitaplar ADD COLUMN aciklama TEXT;
 ALTER TABLE kitaplar ADD COLUMN etiketler VARCHAR(500);
 
--- uyeler tablosuna uyelik tipi ve dogum tarihi
 ALTER TABLE uyeler ADD COLUMN uyelik_tipi VARCHAR(20) DEFAULT 'standart'
     CHECK (uyelik_tipi IN ('standart', 'ogrenci', 'akademik', 'vip'));
 ALTER TABLE uyeler ADD COLUMN dogum_tarihi DATE;
 ALTER TABLE uyeler ADD COLUMN max_odunc INTEGER DEFAULT 3;
 
--- yazarlar tablosuna biyografi
 ALTER TABLE yazarlar ADD COLUMN biyografi TEXT;
 
--- odunc_islemleri tablosuna notlar ve uzatma
 ALTER TABLE odunc_islemleri ADD COLUMN notlar TEXT;
 ALTER TABLE odunc_islemleri ADD COLUMN uzatma_sayisi INTEGER DEFAULT 0;
 
--- ============================================================================
--- YENI INDEKSLER
--- ============================================================================
 CREATE INDEX idx_kitaplar_yayinevi ON kitaplar(yayinevi_id);
 CREATE INDEX idx_kitaplar_dil ON kitaplar(dil);
 CREATE INDEX idx_cezalar_uye ON cezalar(uye_id);
@@ -99,9 +76,6 @@ CREATE INDEX idx_rezervasyonlar_kitap ON rezervasyonlar(kitap_id);
 CREATE INDEX idx_rezervasyonlar_uye ON rezervasyonlar(uye_id);
 CREATE INDEX idx_kitap_yazarlar_yazar ON kitap_yazarlar(yazar_id);
 
--- ============================================================================
--- YENI VIEW'LAR
--- ============================================================================
 CREATE OR REPLACE VIEW v_kitap_detay AS
 SELECT k.kitap_id, k.isbn, k.baslik, y.ad || ' ' || y.soyad AS yazar,
        kat.kategori_adi, yev.yayinevi_adi, k.yayin_yili, k.dil,
@@ -120,9 +94,6 @@ FROM uyeler u
 LEFT JOIN cezalar c ON u.uye_id = c.uye_id
 GROUP BY u.uye_id, u.ad, u.soyad, u.uyelik_tipi;
 
--- ============================================================================
--- YENI FONKSIYON: Gecikme cezasi hesapla
--- ============================================================================
 CREATE OR REPLACE FUNCTION fn_ceza_hesapla(p_islem_id INTEGER)
 RETURNS DECIMAL AS $$
 DECLARE
@@ -135,9 +106,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ============================================================================
--- ORNEK VERI (yeni tablolar icin)
--- ============================================================================
 INSERT INTO yayinevleri (yayinevi_adi, sehir, email) VALUES
 ('Iletisim Yayinlari','Istanbul','info@iletisim.com'),
 ('Yapi Kredi Yayinlari','Istanbul','info@ykyyayin.com'),
@@ -148,15 +116,12 @@ INSERT INTO yayinevleri (yayinevi_adi, sehir, email) VALUES
 ('Everest Yayinlari','Istanbul','info@everestyayin.com'),
 ('Pegasus Yayinlari','Istanbul','info@pegasus.com');
 
--- Mevcut kitap-yazar iliskilerini coka-cok tablosuna aktar
 INSERT INTO kitap_yazarlar (kitap_id, yazar_id, rol)
 SELECT kitap_id, yazar_id, 'yazar' FROM kitaplar WHERE yazar_id IS NOT NULL
 ON CONFLICT DO NOTHING;
 
--- Yayinevi ata
 UPDATE kitaplar SET yayinevi_id = 1 + (kitap_id % 8);
 
--- Uyelik tipleri ata
 UPDATE uyeler SET uyelik_tipi = (ARRAY['standart','ogrenci','akademik','vip'])[1 + (uye_id % 4)],
     max_odunc = CASE
         WHEN (ARRAY['standart','ogrenci','akademik','vip'])[1 + (uye_id % 4)] = 'vip' THEN 10
@@ -164,7 +129,6 @@ UPDATE uyeler SET uyelik_tipi = (ARRAY['standart','ogrenci','akademik','vip'])[1
         WHEN (ARRAY['standart','ogrenci','akademik','vip'])[1 + (uye_id % 4)] = 'ogrenci' THEN 5
         ELSE 3 END;
 
--- Gecikme cezalari olustur
 INSERT INTO cezalar (islem_id, uye_id, ceza_tutari, gecikme_gun, odeme_durumu)
 SELECT islem_id, uye_id,
     ROUND((5 + random() * 50)::NUMERIC, 2),
@@ -172,14 +136,12 @@ SELECT islem_id, uye_id,
     (ARRAY['odenmedi','odendi','odendi','muaf'])[1 + (islem_id % 4)]
 FROM odunc_islemleri WHERE durum = 'gecikti' LIMIT 200;
 
--- Rezervasyonlar
 INSERT INTO rezervasyonlar (kitap_id, uye_id, rezervasyon_tarihi, durum)
 SELECT 1 + (i % 200), 1 + (i % 400),
     CURRENT_TIMESTAMP - (INTERVAL '1 day' * (random() * 60)::INTEGER),
     (ARRAY['aktif','tamamlandi','iptal','suresi_doldu'])[1 + (i % 4)]
 FROM generate_series(1, 300) AS s(i);
 
--- Surum kaydini guncelle
 INSERT INTO schema_version (version_no, aciklama, migration_dosya, geri_alma_dosya)
 VALUES ('2.0.0', 'Yayinevleri, ceza sistemi, rezervasyon, kitap-yazar coka-cok, uyelik tipleri',
         'v1_to_v2_migration.sql', 'v2_to_v1_rollback.sql');

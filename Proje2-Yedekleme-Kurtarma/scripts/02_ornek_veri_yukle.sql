@@ -1,15 +1,6 @@
--- ============================================================================
--- BLM4522 - Ağ Tabanlı Paralel Dağıtım Sistemleri
--- Proje 2: Veritabanı Yedekleme ve Felaketten Kurtarma Planı
--- Dosya: 02_ornek_veri_yukle.sql
--- Açıklama: Örnek veri yükleme (10.000+ satır)
--- ============================================================================
 
 \c eticaret_db;
 
--- ============================================================================
--- KATEGORİLER (20 adet)
--- ============================================================================
 INSERT INTO kategoriler (kategori_adi, ust_kategori_id, aciklama) VALUES
 ('Elektronik', NULL, 'Elektronik ürünler ana kategori'),
 ('Giyim', NULL, 'Giyim ve moda ürünleri'),
@@ -34,9 +25,6 @@ INSERT INTO kategoriler (kategori_adi, ust_kategori_id, aciklama) VALUES
 ('Ofis Malzemesi', 5, 'Ofis kırtasiye malzemeleri'),
 ('Tablet', 1, 'Tablet bilgisayarlar');
 
--- ============================================================================
--- TEDARİKÇİLER (15 adet)
--- ============================================================================
 INSERT INTO tedarikciler (firma_adi, yetkili_adi, email, telefon, adres, sehir, vergi_no) VALUES
 ('TeknoPlus A.Ş.', 'Ahmet Yılmaz', 'info@teknoplus.com', '0212-555-0001', 'Levent Mah. No:15', 'İstanbul', '1234567890'),
 ('ModaLine Ltd.', 'Zeynep Kaya', 'satis@modaline.com', '0216-555-0002', 'Kadıköy Mah. No:25', 'İstanbul', '2345678901'),
@@ -54,9 +42,6 @@ INSERT INTO tedarikciler (firma_adi, yetkili_adi, email, telefon, adres, sehir, 
 ('TechStore Ltd.', 'Lale Güneş', 'satis@techstore.com', '0216-555-0014', 'Maltepe Blv. No:55', 'İstanbul', '4455667788'),
 ('KırtasiyeNet A.Ş.', 'Murat Acar', 'info@kirtasiyenet.com', '0352-555-0015', 'Melikgazi No:9', 'Kayseri', '5566778899');
 
--- ============================================================================
--- MÜŞTERİLER (500 adet - generate_series ile)
--- ============================================================================
 INSERT INTO musteriler (ad, soyad, email, telefon, sifre_hash, adres_satir1, sehir, ilce, posta_kodu)
 SELECT 
     (ARRAY['Ahmet','Mehmet','Ali','Mustafa','Hasan','Hüseyin','İbrahim','Ömer','Fatma','Ayşe',
@@ -77,11 +62,6 @@ SELECT
     (10000 + (i % 80000))::TEXT
 FROM generate_series(1, 500) AS s(i);
 
--- ============================================================================
--- ÜRÜNLER (200 adet)
--- ============================================================================
-
--- Elektronik Ürünler
 INSERT INTO urunler (urun_adi, urun_kodu, kategori_id, tedarikci_id, aciklama, birim_fiyat, stok_miktari, min_stok_seviyesi, agirlik_kg) VALUES
 ('Laptop Pro 15"', 'ELK-001', 6, 1, '15.6 inç, i7 işlemci, 16GB RAM, 512GB SSD', 24999.99, 150, 20, 2.1),
 ('Laptop Air 13"', 'ELK-002', 6, 1, '13.3 inç, i5 işlemci, 8GB RAM, 256GB SSD', 17499.99, 200, 25, 1.3),
@@ -99,7 +79,6 @@ INSERT INTO urunler (urun_adi, urun_kodu, kategori_id, tedarikci_id, aciklama, b
 ('Monitör 27"', 'ELK-014', 6, 1, '27 inç, 4K, IPS Panel', 7999.99, 180, 20, 6.2),
 ('Kablosuz Mouse', 'ELK-015', 6, 14, 'Ergonomik, Bluetooth', 599.99, 800, 100, 0.12);
 
--- Giyim Ürünleri
 INSERT INTO urunler (urun_adi, urun_kodu, kategori_id, tedarikci_id, aciklama, birim_fiyat, stok_miktari, min_stok_seviyesi, agirlik_kg) VALUES
 ('Erkek Klasik Gömlek', 'GYM-001', 9, 2, '%100 Pamuk, Slim Fit', 349.99, 400, 50, 0.25),
 ('Erkek Kot Pantolon', 'GYM-002', 9, 7, 'Straight Fit, İndigo', 449.99, 350, 40, 0.65),
@@ -117,7 +96,6 @@ INSERT INTO urunler (urun_adi, urun_kodu, kategori_id, tedarikci_id, aciklama, b
 ('Erkek Takım Elbise', 'GYM-014', 9, 2, 'İtalyan kesim, Slim Fit', 3499.99, 100, 10, 1.8),
 ('Kadın Spor Ayakkabı', 'GYM-015', 10, 7, 'Yürüyüş, Memory Foam', 749.99, 350, 40, 0.65);
 
--- Ev & Yaşam Ürünleri
 INSERT INTO urunler (urun_adi, urun_kodu, kategori_id, tedarikci_id, aciklama, birim_fiyat, stok_miktari, min_stok_seviyesi, agirlik_kg) VALUES
 ('Köşe Koltuk Takımı', 'EVY-001', 12, 3, 'L koltuk, Kumaş döşeme', 12999.99, 30, 5, 85.0),
 ('Yemek Masası Seti', 'EVY-002', 12, 8, '6 kişilik, Ahşap', 5999.99, 40, 8, 45.0),
@@ -135,7 +113,6 @@ INSERT INTO urunler (urun_adi, urun_kodu, kategori_id, tedarikci_id, aciklama, b
 ('Halı 200x300', 'EVY-014', 3, 13, 'El dokuma, Yün', 4999.99, 40, 5, 12.0),
 ('Aydınlatma Seti', 'EVY-015', 3, 3, 'LED, Sarkıt, 3lü', 899.99, 150, 20, 3.5);
 
--- Spor & Outdoor Ürünleri
 INSERT INTO urunler (urun_adi, urun_kodu, kategori_id, tedarikci_id, aciklama, birim_fiyat, stok_miktari, min_stok_seviyesi, agirlik_kg) VALUES
 ('Koşu Bandı', 'SPR-001', 15, 9, 'Katlanır, 18km/h, Eğim ayarlı', 8999.99, 40, 5, 65.0),
 ('Yoga Matı', 'SPR-002', 15, 12, 'TPE, 183x61cm, 6mm', 249.99, 500, 60, 1.2),
@@ -153,7 +130,6 @@ INSERT INTO urunler (urun_adi, urun_kodu, kategori_id, tedarikci_id, aciklama, b
 ('Yüzme Gözlüğü', 'SPR-014', 4, 12, 'Anti-fog, UV koruma', 149.99, 400, 50, 0.08),
 ('Pilates Topu', 'SPR-015', 15, 9, '65cm, Anti-burst', 199.99, 350, 40, 1.0);
 
--- Kitap & Kırtasiye Ürünleri
 INSERT INTO urunler (urun_adi, urun_kodu, kategori_id, tedarikci_id, aciklama, birim_fiyat, stok_miktari, min_stok_seviyesi, agirlik_kg) VALUES
 ('Suç ve Ceza', 'KTB-001', 17, 5, 'Dostoyevski, Türkçe çeviri', 59.99, 500, 60, 0.45),
 ('1984', 'KTB-002', 17, 10, 'George Orwell, Türkçe', 49.99, 600, 80, 0.32),
@@ -171,7 +147,6 @@ INSERT INTO urunler (urun_adi, urun_kodu, kategori_id, tedarikci_id, aciklama, b
 ('Silgi-Kalemtıraş Set', 'KTB-014', 19, 15, '5 parça set', 19.99, 500, 60, 0.10),
 ('Dosya Klasör', 'KTB-015', 19, 15, 'Geniş, Sırt etiketli', 24.99, 700, 80, 0.30);
 
--- Ek Ürünler (125 adet daha - toplam 200 için)
 INSERT INTO urunler (urun_adi, urun_kodu, kategori_id, tedarikci_id, aciklama, birim_fiyat, stok_miktari, min_stok_seviyesi, agirlik_kg)
 SELECT 
     'Ürün-' || (ARRAY['Alfa','Beta','Gama','Delta','Epsilon','Zeta','Eta','Theta','Iota','Kappa'])[1 + (i % 10)] || '-' || i,
@@ -185,9 +160,6 @@ SELECT
     ROUND((0.1 + random() * 15)::NUMERIC, 2)
 FROM generate_series(1, 125) AS s(i);
 
--- ============================================================================
--- SİPARİŞLER (3000 adet)
--- ============================================================================
 INSERT INTO siparisler (musteri_id, siparis_tarihi, durum, odeme_yontemi, kargo_adresi, kargo_ucreti)
 SELECT
     1 + (i % 500),
@@ -198,12 +170,6 @@ SELECT
     CASE WHEN random() > 0.3 THEN ROUND((15 + random() * 35)::NUMERIC, 2) ELSE 0 END
 FROM generate_series(1, 3000) AS s(i);
 
--- ============================================================================
--- SİPARİŞ DETAYLARI (8000+ adet)
--- Trigger stok düşürmesini geçici olarak devre dışı bırak (veri yükleme hızı için)
--- ============================================================================
-
--- Trigger'ları geçici olarak devre dışı bırak
 ALTER TABLE siparis_detaylari DISABLE TRIGGER trg_stok_dusur;
 ALTER TABLE siparis_detaylari DISABLE TRIGGER trg_siparis_toplam;
 
@@ -218,11 +184,9 @@ SELECT
 FROM generate_series(1, 8000) AS s(i)
 JOIN urunler u ON u.urun_id = 1 + (i % 200);
 
--- Trigger'ları tekrar etkinleştir
 ALTER TABLE siparis_detaylari ENABLE TRIGGER trg_stok_dusur;
 ALTER TABLE siparis_detaylari ENABLE TRIGGER trg_siparis_toplam;
 
--- Sipariş toplamlarını güncelle
 UPDATE siparisler s
 SET toplam_tutar = (
     SELECT COALESCE(SUM(sd.toplam_fiyat), 0) 
@@ -230,9 +194,6 @@ SET toplam_tutar = (
     WHERE sd.siparis_id = s.siparis_id
 );
 
--- ============================================================================
--- ÖDEMELER (2500 adet - sadece iptal olmayanlara)
--- ============================================================================
 INSERT INTO odemeler (siparis_id, odeme_tarihi, tutar, odeme_yontemi, odeme_durumu, islem_referansi)
 SELECT 
     s.siparis_id,
@@ -249,9 +210,6 @@ FROM siparisler s
 WHERE s.toplam_tutar > 0
 LIMIT 2500;
 
--- ============================================================================
--- STOK HAREKETLERİ (1000+ adet)
--- ============================================================================
 INSERT INTO stok_hareketleri (urun_id, hareket_tipi, miktar, onceki_stok, sonraki_stok, referans_no, aciklama, islem_tarihi, kullanici_adi)
 SELECT 
     1 + (i % 200),
@@ -274,9 +232,6 @@ SELECT
     (ARRAY['admin','depocu1','depocu2','yonetici','sistem'])[1 + (i % 5)]
 FROM generate_series(1, 1200) AS s(i);
 
--- ============================================================================
--- VERİ YÜKLEME SONUÇ RAPORU
--- ============================================================================
 SELECT '=== VERİ YÜKLEME RAPORU ===' AS bilgi;
 
 SELECT 'Kategoriler' AS tablo, COUNT(*) AS kayit_sayisi FROM kategoriler

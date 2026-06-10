@@ -1,19 +1,9 @@
--- ============================================================================
--- BLM4522 - Proje 6: Veritabani Yukseltme ve Surum Yonetimi
--- Dosya: 01_v1_temel_sema.sql
--- Aciklama: Kutuphane Yonetim Sistemi v1.0 - Temel Sema
--- ============================================================================
 
--- Mevcut DB varsa sil
 DROP DATABASE IF EXISTS kutuphane_db;
 CREATE DATABASE kutuphane_db WITH ENCODING = 'UTF8' TEMPLATE = template0;
 
 \c kutuphane_db;
 
--- ============================================================================
--- SURUM YONETIM TABLOSU (Migration Tracking)
--- Bu tablo tum surumlerde kalir, migration gecmisini tutar
--- ============================================================================
 CREATE TABLE schema_version (
     version_id SERIAL PRIMARY KEY,
     version_no VARCHAR(20) NOT NULL,
@@ -31,11 +21,6 @@ CREATE TABLE schema_version (
 CREATE INDEX idx_schema_version_no ON schema_version(version_no);
 COMMENT ON TABLE schema_version IS 'Veritabani sema surum gecmisi';
 
--- ============================================================================
--- V1.0 TABLOLAR - Temel Kutuphane Sistemi
--- ============================================================================
-
--- 1. Yazarlar
 CREATE TABLE yazarlar (
     yazar_id SERIAL PRIMARY KEY,
     ad VARCHAR(100) NOT NULL,
@@ -46,7 +31,6 @@ CREATE TABLE yazarlar (
     olusturma_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. Kategoriler
 CREATE TABLE kategoriler (
     kategori_id SERIAL PRIMARY KEY,
     kategori_adi VARCHAR(100) NOT NULL UNIQUE,
@@ -54,7 +38,6 @@ CREATE TABLE kategoriler (
     olusturma_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Kitaplar
 CREATE TABLE kitaplar (
     kitap_id SERIAL PRIMARY KEY,
     isbn VARCHAR(20) UNIQUE NOT NULL,
@@ -68,7 +51,6 @@ CREATE TABLE kitaplar (
     olusturma_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 4. Uyeler
 CREATE TABLE uyeler (
     uye_id SERIAL PRIMARY KEY,
     tc_kimlik VARCHAR(11) UNIQUE NOT NULL,
@@ -81,7 +63,6 @@ CREATE TABLE uyeler (
     aktif BOOLEAN DEFAULT TRUE
 );
 
--- 5. Odunc Islemleri
 CREATE TABLE odunc_islemleri (
     islem_id SERIAL PRIMARY KEY,
     kitap_id INTEGER NOT NULL REFERENCES kitaplar(kitap_id),
@@ -93,7 +74,6 @@ CREATE TABLE odunc_islemleri (
         CHECK (durum IN ('oduncte', 'iade_edildi', 'gecikti'))
 );
 
--- V1.0 Indeksler
 CREATE INDEX idx_kitaplar_isbn ON kitaplar(isbn);
 CREATE INDEX idx_kitaplar_yazar ON kitaplar(yazar_id);
 CREATE INDEX idx_kitaplar_kategori ON kitaplar(kategori_id);
@@ -102,7 +82,6 @@ CREATE INDEX idx_odunc_kitap ON odunc_islemleri(kitap_id);
 CREATE INDEX idx_odunc_uye ON odunc_islemleri(uye_id);
 CREATE INDEX idx_odunc_durum ON odunc_islemleri(durum);
 
--- V1.0 Surum kaydini ekle
 INSERT INTO schema_version (version_no, aciklama, migration_dosya)
 VALUES ('1.0.0', 'Temel kutuphane semasi: yazarlar, kategoriler, kitaplar, uyeler, odunc_islemleri', '01_v1_temel_sema.sql');
 

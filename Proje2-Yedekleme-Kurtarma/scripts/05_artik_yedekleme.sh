@@ -1,13 +1,5 @@
 #!/bin/bash
-# ============================================================================
-# BLM4522 - Ağ Tabanlı Paralel Dağıtım Sistemleri
-# Proje 2: Veritabanı Yedekleme ve Felaketten Kurtarma Planı
-# Dosya: 05_artik_yedekleme.sh
-# Açıklama: Artık (Incremental) Yedekleme - WAL Arşivleme
-# PostgreSQL'de artık yedekleme WAL (Write-Ahead Logging) üzerinden sağlanır.
-# ============================================================================
 
-# Renk kodları
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -15,7 +7,6 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# Değişkenler
 DB_NAME="eticaret_db"
 DB_USER=$(whoami)
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -38,9 +29,6 @@ echo -e "${CYAN}============================================${NC}"
 
 echo -e "\n${BLUE}PostgreSQL Veri Dizini: $PG_DATA${NC}"
 
-# ============================================================================
-# 1. WAL Durumunu Kontrol Et
-# ============================================================================
 echo -e "\n${YELLOW}[1/5] WAL Durumu Kontrolü${NC}"
 
 WAL_LEVEL=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SHOW wal_level;" 2>/dev/null)
@@ -51,9 +39,6 @@ echo -e "  WAL Level: ${BLUE}$WAL_LEVEL${NC}"
 echo -e "  Archive Mode: ${BLUE}$ARCHIVE_MODE${NC}"
 echo -e "  Archive Command: ${BLUE}${ARCHIVE_COMMAND:-'(ayarlanmamış)'}${NC}"
 
-# ============================================================================
-# 2. WAL Yapılandırma Dosyası Oluştur
-# ============================================================================
 echo -e "\n${YELLOW}[2/5] WAL Yapılandırma Ayarları${NC}"
 
 WAL_CONFIG_FILE="$PROJECT_DIR/config/wal_settings.sql"
@@ -93,13 +78,8 @@ EOSQL
 echo -e "${GREEN}  ✓ WAL yapılandırma dosyası oluşturuldu${NC}"
 echo -e "    Dosya: $WAL_CONFIG_FILE"
 
-# ============================================================================
-# 3. WAL Ayarlarını Uygula (Dikkatli!)
-# ============================================================================
 echo -e "\n${YELLOW}[3/5] WAL Ayarlarını Uygulama${NC}"
 
-# wal_level ve archive_mode değiştirmek sunucu restart gerektirir
-# Burada güvenli ayarları uyguluyoruz
 psql -U "$DB_USER" -d "$DB_NAME" << EOSQL 2>> "$LOG_DIR/artik_yedekleme_${TIMESTAMP}.log"
 -- WAL sıkıştırma etkinleştir (restart gerektirmez)
 ALTER SYSTEM SET wal_compression = 'on';
@@ -126,20 +106,14 @@ else
     echo -e "${RED}  ✗ WAL ayarları uygulanamadı!${NC}"
 fi
 
-# ============================================================================
-# 4. Manuel WAL Checkpoint ve Arşivleme Simülasyonu
-# ============================================================================
 echo -e "\n${YELLOW}[4/5] Checkpoint & WAL Simülasyonu${NC}"
 
-# Checkpoint yap
 echo -e "  ${BLUE}Checkpoint yapılıyor...${NC}"
 psql -U "$DB_USER" -d "$DB_NAME" -c "CHECKPOINT;" 2>> "$LOG_DIR/artik_yedekleme_${TIMESTAMP}.log"
 
-# WAL konumunu kaydet (artık yedekleme referans noktası)
 WAL_START=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT pg_current_wal_lsn();" 2>/dev/null)
 echo -e "  WAL Başlangıç Noktası: ${BLUE}$WAL_START${NC}"
 
-# Test verileri ekle (WAL üretmek için)
 echo -e "  ${BLUE}Test verileri ekleniyor (WAL üretmek için)...${NC}"
 psql -U "$DB_USER" -d "$DB_NAME" << EOSQL >> "$LOG_DIR/artik_yedekleme_${TIMESTAMP}.log" 2>&1
 -- Artık yedekleme test verileri
@@ -160,18 +134,14 @@ WHERE musteri_id <= 50;
 CHECKPOINT;
 EOSQL
 
-# WAL bitiş konumunu al
 WAL_END=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT pg_current_wal_lsn();" 2>/dev/null)
 WAL_DIFF=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT pg_wal_lsn_diff('$WAL_END', '$WAL_START');" 2>/dev/null)
 
 echo -e "  WAL Bitiş Noktası: ${BLUE}$WAL_END${NC}"
 echo -e "  WAL Farkı: ${GREEN}$WAL_DIFF bytes${NC}"
 
-# WAL bilgilerini kaydet
 WAL_INFO_FILE="$BACKUP_DIR/incremental/wal_info_${TIMESTAMP}.txt"
 cat > "$WAL_INFO_FILE" << EOF
-# WAL Artık Yedekleme Bilgileri
-# Tarih: $(date '+%Y-%m-%d %H:%M:%S')
 WAL_START=$WAL_START
 WAL_END=$WAL_END
 WAL_DIFF_BYTES=$WAL_DIFF
@@ -180,9 +150,6 @@ EOF
 
 echo -e "${GREEN}  ✓ WAL bilgileri kaydedildi: $WAL_INFO_FILE${NC}"
 
-# ============================================================================
-# 5. pg_basebackup ile Baz Yedekleme (PITR için gerekli)
-# ============================================================================
 echo -e "\n${YELLOW}[5/5] pg_basebackup ile Baz Yedekleme${NC}"
 BASE_BACKUP_DIR="$BACKUP_DIR/incremental/base_${TIMESTAMP}"
 
@@ -205,7 +172,6 @@ if [ $? -eq 0 ]; then
     echo -e "    Boyut: $BACKUP_SIZE"
     echo -e "    Süre: ${DURATION} saniye"
     
-    # Baz yedek içeriğini göster
     echo -e "\n  ${BLUE}Baz yedek dosyaları:${NC}"
     ls -lh "$BASE_BACKUP_DIR/" 2>/dev/null | while read line; do
         echo -e "    $line"
@@ -216,9 +182,6 @@ else
     echo -e "${YELLOW}  pg_hba.conf dosyasında replication satırı olmalıdır.${NC}"
 fi
 
-# ============================================================================
-# ÖZET
-# ============================================================================
 echo -e "\n${CYAN}============================================${NC}"
 echo -e "${CYAN}   ARTIK YEDEKLEME ÖZETİ${NC}"
 echo -e "${CYAN}============================================${NC}"

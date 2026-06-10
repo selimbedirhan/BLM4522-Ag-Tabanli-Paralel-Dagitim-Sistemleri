@@ -1,8 +1,4 @@
 #!/bin/bash
-# ============================================================================
-# Proje 6: Rollback Demo + Tam Surum Yonetimi Demo
-# v1.0 -> v2.0 -> v3.0 -> rollback v2.0 -> tekrar v3.0
-# ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -33,9 +29,6 @@ echo -e "${MAGENTA}║  Proje 6: Surum Yonetimi Tam Demo           ║${NC}"
 echo -e "${MAGENTA}║  v1.0 -> v2.0 -> v3.0 -> rollback -> v3.0   ║${NC}"
 echo -e "${MAGENTA}╚══════════════════════════════════════════════╝${NC}"
 
-# ============================================================================
-# ADIM 1: v1.0 Temel Kurulum
-# ============================================================================
 echo -e "\n${MAGENTA}━━━ ADIM 1: v1.0 Temel Kurulum ━━━${NC}"
 
 psql -U "$DB_USER" -d postgres -f "$SCRIPT_DIR/01_v1_temel_sema.sql" > /dev/null 2>&1
@@ -44,48 +37,32 @@ echo -e "  ${GREEN}v1.0 olusturuldu ve veriler yuklendi${NC}"
 show_version
 sleep 1
 
-# ============================================================================
-# ADIM 2: Yukseltme Oncesi Kontrol
-# ============================================================================
 echo -e "\n${MAGENTA}━━━ ADIM 2: Yukseltme Oncesi Kontrol ━━━${NC}"
 bash "$SCRIPT_DIR/03_yukseltme_oncesi_kontrol.sh" 2>&1 | tail -5
 sleep 1
 
-# ============================================================================
-# ADIM 3: v1.0 -> v2.0 Migration
-# ============================================================================
 echo -e "\n${MAGENTA}━━━ ADIM 3: v1.0 -> v2.0 Yukseltme ━━━${NC}"
 psql -U "$DB_USER" -d postgres -f "$PROJECT_DIR/migrations/v1_to_v2_migration.sql" > /dev/null 2>&1
 echo -e "  ${GREEN}v2.0 migration tamamlandi${NC}"
 show_version
 sleep 1
 
-# ============================================================================
-# ADIM 4: v2.0 -> v3.0 Migration
-# ============================================================================
 echo -e "\n${MAGENTA}━━━ ADIM 4: v2.0 -> v3.0 Yukseltme ━━━${NC}"
 psql -U "$DB_USER" -d postgres -f "$PROJECT_DIR/migrations/v2_to_v3_migration.sql" > /dev/null 2>&1
 echo -e "  ${GREEN}v3.0 migration tamamlandi${NC}"
 show_version
 sleep 1
 
-# ============================================================================
-# ADIM 5: Yukseltme Sonrasi Kontrol
-# ============================================================================
 echo -e "\n${MAGENTA}━━━ ADIM 5: Yukseltme Sonrasi Kontrol ━━━${NC}"
 bash "$SCRIPT_DIR/05_yukseltme_sonrasi_kontrol.sh" 2>&1 | grep -E "GECTI|KALDI|Surum|Toplam|BASARILI|BASARISIZ"
 sleep 1
 
-# ============================================================================
-# ADIM 6: ROLLBACK Demo (v3.0 -> v2.0)
-# ============================================================================
 echo -e "\n${MAGENTA}━━━ ADIM 6: Rollback Testi (v3.0 -> v2.0) ━━━${NC}"
 echo -e "  ${YELLOW}v3.0 geri aliniyor...${NC}"
 psql -U "$DB_USER" -d postgres -f "$PROJECT_DIR/rollback/v3_to_v2_rollback.sql" > /dev/null 2>&1
 echo -e "  ${GREEN}Rollback tamamlandi${NC}"
 show_version
 
-# v3.0 tablolarinin silindigini dogrula
 for tbl in dijital_kitaplar etkinlikler bildirimler; do
     EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "
         SELECT COUNT(*) FROM information_schema.tables WHERE table_name='$tbl';
@@ -98,12 +75,8 @@ for tbl in dijital_kitaplar etkinlikler bildirimler; do
 done
 sleep 1
 
-# ============================================================================
-# ADIM 7: Tekrar v3.0 Yukseltme
-# ============================================================================
 echo -e "\n${MAGENTA}━━━ ADIM 7: Tekrar v3.0 Yukseltme ━━━${NC}"
 
-# Rollback kaydini duzeltelim
 psql -U "$DB_USER" -d "$DB_NAME" -c "
     UPDATE schema_version SET durum='basarili' WHERE version_no='2.0.0' AND durum='basarili';
     DELETE FROM schema_version WHERE version_no='2.0.0-rollback';
@@ -114,9 +87,6 @@ echo -e "  ${GREEN}v3.0 tekrar uygulandı${NC}"
 show_version
 sleep 1
 
-# ============================================================================
-# SEMA KARSILASTIRMASI
-# ============================================================================
 echo -e "\n${MAGENTA}━━━ Surum Karsilastirma Tablosu ━━━${NC}"
 
 echo -e "\n  ${BLUE}Surum Gecmisi:${NC}"
@@ -137,9 +107,6 @@ psql -U "$DB_USER" -d "$DB_NAME" -c "
 echo -e "\n  ${BLUE}Kutuphane Istatistik:${NC}"
 psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT * FROM v_kutuphane_istatistik;" 2>/dev/null
 
-# ============================================================================
-# SONUC
-# ============================================================================
 echo -e "\n${MAGENTA}╔══════════════════════════════════════════════╗${NC}"
 echo -e "${MAGENTA}║       DEMO TAMAMLANDI                        ║${NC}"
 echo -e "${MAGENTA}╚══════════════════════════════════════════════╝${NC}"

@@ -1,29 +1,10 @@
-# ============================================================================
-# PostgreSQL E-Ticaret DB Yedekleme Zamanlayıcı Tanımları
-# Kurulum: crontab /Users/selimbedirhanozturk/Desktop/DERSLER/BLM4522 Ağ Tabanlı Paralel Dağıtım Sistemleri/Proje2-Yedekleme-Kurtarma/config/crontab_yedekleme.txt
-# Görüntüleme: crontab -l
-# ============================================================================
 
-# Ortam değişkenleri
 PATH=/opt/homebrew/opt/postgresql@14/bin:/usr/local/bin:/usr/bin:/bin
 SHELL=/bin/bash
 
-# Günlük tam yedekleme - Her gün saat 02:00'de
 0 2 * * * /Users/selimbedirhanozturk/Desktop/DERSLER/BLM4522 Ağ Tabanlı Paralel Dağıtım Sistemleri/Proje2-Yedekleme-Kurtarma/scripts/auto_backup.sh >> /Users/selimbedirhanozturk/Desktop/DERSLER/BLM4522 Ağ Tabanlı Paralel Dağıtım Sistemleri/Proje2-Yedekleme-Kurtarma/logs/cron_output.log 2>&1
 
-# Haftalık tam yedekleme (sıkıştırılmış) - Her Pazar saat 03:00'te
 0 3 * * 0 /Users/selimbedirhanozturk/Desktop/DERSLER/BLM4522 Ağ Tabanlı Paralel Dağıtım Sistemleri/Proje2-Yedekleme-Kurtarma/scripts/03_tam_yedekleme.sh >> /Users/selimbedirhanozturk/Desktop/DERSLER/BLM4522 Ağ Tabanlı Paralel Dağıtım Sistemleri/Proje2-Yedekleme-Kurtarma/logs/cron_output.log 2>&1
 
-# Saatlik fark yedekleme (çalışma saatlerinde) - Pazartesi-Cuma, 09:00-18:00
 0 9-18 * * 1-5 /Users/selimbedirhanozturk/Desktop/DERSLER/BLM4522 Ağ Tabanlı Paralel Dağıtım Sistemleri/Proje2-Yedekleme-Kurtarma/scripts/04_fark_yedekleme.sh >> /Users/selimbedirhanozturk/Desktop/DERSLER/BLM4522 Ağ Tabanlı Paralel Dağıtım Sistemleri/Proje2-Yedekleme-Kurtarma/logs/cron_output.log 2>&1
 
-# ============================================================================
-# CRON ZAMANLAYICI FORMAT:
-# ┌───────────── dakika (0-59)
-# │ ┌───────────── saat (0-23)
-# │ │ ┌───────────── ayın günü (1-31)
-# │ │ │ ┌───────────── ay (1-12)
-# │ │ │ │ ┌───────────── haftanın günü (0-7, 0=Pazar)
-# │ │ │ │ │
-# * * * * * komut
-# ============================================================================

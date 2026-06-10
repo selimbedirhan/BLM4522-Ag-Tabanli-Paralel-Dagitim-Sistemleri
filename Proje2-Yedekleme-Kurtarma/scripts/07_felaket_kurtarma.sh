@@ -1,12 +1,5 @@
 #!/bin/bash
-# ============================================================================
-# BLM4522 - Ağ Tabanlı Paralel Dağıtım Sistemleri
-# Proje 2: Veritabanı Yedekleme ve Felaketten Kurtarma Planı
-# Dosya: 07_felaket_kurtarma.sh
-# Açıklama: Felaketten Kurtarma Senaryoları
-# ============================================================================
 
-# Renk kodları
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -15,7 +8,6 @@ CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m'
 
-# Değişkenler
 DB_NAME="eticaret_db"
 DB_USER=$(whoami)
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -34,35 +26,27 @@ echo -e "${CYAN}   FELAKETTEN KURTARMA SENARYOLARI${NC}"
 echo -e "${CYAN}   Tarih: $(date '+%Y-%m-%d %H:%M:%S')${NC}"
 echo -e "${CYAN}============================================${NC}"
 
-# ============================================================================
-# SENARYO 1: Yanlışlıkla Tablo Silme → Yedekten Geri Yükleme
-# ============================================================================
 echo -e "\n${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${MAGENTA}  SENARYO 1: Yanlışlıkla Tablo Silme${NC}"
 echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-# Önce güncel bir yedek al
 echo -e "\n${YELLOW}Adım 1: Güncel yedek alınıyor...${NC}"
 BACKUP_BEFORE="$BACKUP_DIR/full/${DB_NAME}_before_disaster_${TIMESTAMP}.dump"
 mkdir -p "$BACKUP_DIR/full"
 pg_dump -U "$DB_USER" -d "$DB_NAME" -Fc -Z 6 -f "$BACKUP_BEFORE" 2>> "$LOG_DIR/felaket_kurtarma_${TIMESTAMP}.log"
 echo -e "${GREEN}  ✓ Yedek alındı: $(basename $BACKUP_BEFORE)${NC}"
 
-# Silmeden önce kayıt sayısını göster
 echo -e "\n${YELLOW}Adım 2: Silme öncesi durum...${NC}"
 BEFORE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT COUNT(*) FROM stok_hareketleri;" 2>/dev/null)
 echo -e "  stok_hareketleri tablosu kayıt sayısı: ${BLUE}$BEFORE_COUNT${NC}"
 
-# FELAKET SİMÜLASYONU: Tabloyu sil
 echo -e "\n${RED}Adım 3: 💥 FELAKET! stok_hareketleri tablosu siliniyor...${NC}"
 psql -U "$DB_USER" -d "$DB_NAME" -c "DROP TABLE stok_hareketleri CASCADE;" 2>> "$LOG_DIR/felaket_kurtarma_${TIMESTAMP}.log"
 echo -e "${RED}  ✗ stok_hareketleri tablosu SİLİNDİ!${NC}"
 
-# Tablonun silindiğini doğrula
 TABLE_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'stok_hareketleri');" 2>/dev/null)
 echo -e "  Tablo mevcut mu: ${RED}$TABLE_EXISTS${NC}"
 
-# KURTARMA: Yedekten sadece bu tabloyu geri yükle
 echo -e "\n${GREEN}Adım 4: 🔧 KURTARMA BAŞLIYOR...${NC}"
 echo -e "  Yedekten stok_hareketleri tablosu geri yükleniyor..."
 
@@ -81,14 +65,10 @@ else
     echo -e "${RED}  ✗ Tablo geri yüklenemedi!${NC}"
 fi
 
-# ============================================================================
-# SENARYO 2: Veritabanının Tamamen Bozulması → Tam Yedekten Restore
-# ============================================================================
 echo -e "\n${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${MAGENTA}  SENARYO 2: Veritabanı Tam Kurtarma${NC}"
 echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-# Test veritabanı oluştur ve orijinalin yedeğinden restore et
 echo -e "\n${YELLOW}Adım 1: Test veritabanı hazırlanıyor...${NC}"
 psql -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $TEST_DB;" 2>/dev/null
 psql -U "$DB_USER" -d postgres -c "CREATE DATABASE $TEST_DB;" 2>> "$LOG_DIR/felaket_kurtarma_${TIMESTAMP}.log"
@@ -109,7 +89,6 @@ DURATION=$((END_TIME - START_TIME))
 if [ $? -eq 0 ] || [ $? -eq 1 ]; then  # pg_restore returns 1 for minor warnings
     echo -e "${GREEN}  ✓ Tam restore başarılı! (${DURATION} saniye)${NC}"
     
-    # Restore doğrulama
     echo -e "\n${YELLOW}Adım 3: Restore doğrulama...${NC}"
     echo -e "  ${BLUE}Orijinal vs Kurtarılan kayıt sayıları:${NC}"
     
@@ -135,14 +114,10 @@ else
     echo -e "${RED}  ✗ Tam restore BAŞARISIZ!${NC}"
 fi
 
-# ============================================================================
-# SENARYO 3: Yanlışlıkla Veri Güncelleme → Kurtarma
-# ============================================================================
 echo -e "\n${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${MAGENTA}  SENARYO 3: Yanlış Veri Güncelleme Kurtarma${NC}"
 echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-# Güncelleme öncesi durumu kaydet
 echo -e "\n${YELLOW}Adım 1: Güncelleme öncesi fiyatlar kaydediliyor...${NC}"
 PRICE_BACKUP="$BACKUP_DIR/full/${DB_NAME}_prices_backup_${TIMESTAMP}.csv"
 psql -U "$DB_USER" -d "$DB_NAME" -c "\COPY (SELECT urun_id, urun_adi, birim_fiyat FROM urunler ORDER BY urun_id LIMIT 20) TO '$PRICE_BACKUP' WITH CSV HEADER" 2>/dev/null
@@ -150,17 +125,14 @@ psql -U "$DB_USER" -d "$DB_NAME" -c "\COPY (SELECT urun_id, urun_adi, birim_fiya
 echo -e "  ${BLUE}İlk 5 ürün fiyatı:${NC}"
 psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT urun_id, urun_adi, birim_fiyat FROM urunler ORDER BY urun_id LIMIT 5;" 2>/dev/null
 
-# FELAKET: Yanlışlıkla tüm fiyatları 0 yapma
 echo -e "\n${RED}Adım 2: 💥 FELAKET! Tüm ürün fiyatları yanlışlıkla 0 yapıldı!${NC}"
 psql -U "$DB_USER" -d "$DB_NAME" -c "UPDATE urunler SET birim_fiyat = 0;" 2>> "$LOG_DIR/felaket_kurtarma_${TIMESTAMP}.log"
 
 echo -e "  ${RED}Güncelleme sonrası fiyatlar:${NC}"
 psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT urun_id, urun_adi, birim_fiyat FROM urunler ORDER BY urun_id LIMIT 5;" 2>/dev/null
 
-# KURTARMA: Yedekten fiyatları geri yükle
 echo -e "\n${GREEN}Adım 3: 🔧 Yedekten fiyatlar geri yükleniyor...${NC}"
 
-# Test veritabanından (ki yedekten restore edildi) fiyatları al
 psql -U "$DB_USER" -d "$DB_NAME" << EOSQL 2>> "$LOG_DIR/felaket_kurtarma_${TIMESTAMP}.log"
 -- Yedeklenmiş test veritabanından fiyatları güncelle
 UPDATE urunler u
@@ -172,18 +144,15 @@ FROM dblink(
 WHERE u.urun_id = t.urun_id;
 EOSQL
 
-# dblink yoksa alternatif yöntem
 if [ $? -ne 0 ]; then
     echo -e "  ${YELLOW}dblink kullanılamıyor, alternatif yöntem deneniyor...${NC}"
     
-    # Yedekten geçici tablo oluştur
     TEMP_PRICES="$BACKUP_DIR/full/temp_prices_${TIMESTAMP}.sql"
     pg_dump -U "$DB_USER" -d "$TEST_DB" \
         --table=urunler --data-only \
         --column-inserts \
         > "$TEMP_PRICES" 2>/dev/null
     
-    # Tabloyu truncate edip yedekten geri yükle
     psql -U "$DB_USER" -d "$DB_NAME" << EOSQL 2>> "$LOG_DIR/felaket_kurtarma_${TIMESTAMP}.log"
 -- Trigger'ları geçici devre dışı bırak
 ALTER TABLE siparis_detaylari DISABLE TRIGGER trg_stok_dusur;
@@ -215,9 +184,6 @@ else
     echo -e "\n${YELLOW}  ⚠ Bazı ürünlerin fiyatı hala 0 ($ZERO_PRICES adet)${NC}"
 fi
 
-# ============================================================================
-# SENARYO 4: Yanlışlıkla Veri Silme (DELETE) → Kurtarma
-# ============================================================================
 echo -e "\n${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${MAGENTA}  SENARYO 4: Yanlışlıkla Veri Silme (DELETE)${NC}"
 echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -226,11 +192,9 @@ echo -e "\n${YELLOW}Adım 1: Silme öncesi müşteri sayısı...${NC}"
 BEFORE_CUSTOMERS=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT COUNT(*) FROM musteriler;" 2>/dev/null)
 echo -e "  Müşteri sayısı: ${BLUE}$BEFORE_CUSTOMERS${NC}"
 
-# FELAKET: İstanbul müşterilerini sil
 echo -e "\n${RED}Adım 2: 💥 FELAKET! İstanbul müşterileri yanlışlıkla silindi!${NC}"
 ISTANBUL_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT COUNT(*) FROM musteriler WHERE sehir = 'İstanbul';" 2>/dev/null)
 
-# Önce bağımlı verileri sil (siparişler, ödemeler)
 psql -U "$DB_USER" -d "$DB_NAME" << EOSQL 2>> "$LOG_DIR/felaket_kurtarma_${TIMESTAMP}.log"
 -- Bağımlı siparişleri ve ödemeleri sil
 DELETE FROM odemeler WHERE siparis_id IN (
@@ -252,10 +216,8 @@ EOSQL
 AFTER_DELETE=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT COUNT(*) FROM musteriler;" 2>/dev/null)
 echo -e "  ${RED}Silinen müşteri: $ISTANBUL_COUNT | Kalan: $AFTER_DELETE${NC}"
 
-# KURTARMA: Tam restore
 echo -e "\n${GREEN}Adım 3: 🔧 Tam veritabanı yedekten geri yükleniyor...${NC}"
 
-# Tüm tabloları yedekten geri yükle
 pg_restore -U "$DB_USER" -d "$DB_NAME" \
     --clean --if-exists \
     --single-transaction \
@@ -265,16 +227,10 @@ RESTORED_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT COUNT(*) FROM
 echo -e "${GREEN}  ✓ Kurtarma tamamlandı!${NC}"
 echo -e "    Kurtarılan müşteri sayısı: ${GREEN}$RESTORED_COUNT${NC}"
 
-# ============================================================================
-# Temizlik
-# ============================================================================
 echo -e "\n${YELLOW}Temizlik: Test veritabanı siliniyor...${NC}"
 psql -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $TEST_DB;" 2>/dev/null
 echo -e "${GREEN}  ✓ Test veritabanı silindi${NC}"
 
-# ============================================================================
-# SONUÇ RAPORU
-# ============================================================================
 echo -e "\n${CYAN}============================================${NC}"
 echo -e "${CYAN}   FELAKETTEN KURTARMA SONUÇ RAPORU${NC}"
 echo -e "${CYAN}============================================${NC}"

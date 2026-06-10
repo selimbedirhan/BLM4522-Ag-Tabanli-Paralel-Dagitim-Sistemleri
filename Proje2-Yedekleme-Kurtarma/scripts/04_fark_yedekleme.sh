@@ -1,14 +1,5 @@
 #!/bin/bash
-# ============================================================================
-# BLM4522 - Ağ Tabanlı Paralel Dağıtım Sistemleri
-# Proje 2: Veritabanı Yedekleme ve Felaketten Kurtarma Planı
-# Dosya: 04_fark_yedekleme.sh
-# Açıklama: Fark (Differential) Yedekleme İşlemleri
-# PostgreSQL'de fark yedekleme, şema/tablo bazlı kısmi yedekleme ve
-# pg_dump ile belirli objelerin yedeklenmesi şeklinde uygulanır.
-# ============================================================================
 
-# Renk kodları
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -16,7 +7,6 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# Değişkenler
 DB_NAME="eticaret_db"
 DB_USER=$(whoami)
 BACKUP_DIR="$(cd "$(dirname "$0")/.." && pwd)/backups"
@@ -33,7 +23,6 @@ echo -e "${CYAN}   FARK (DIFFERENTIAL) YEDEKLEME İŞLEMLERİ${NC}"
 echo -e "${CYAN}   Tarih: $(date '+%Y-%m-%d %H:%M:%S')${NC}"
 echo -e "${CYAN}============================================${NC}"
 
-# Fonksiyon: Boyut formatla
 format_size() {
     local size=$1
     if [ "$size" -gt 1048576 ]; then
@@ -45,10 +34,6 @@ format_size() {
     fi
 }
 
-# ============================================================================
-# 1. Sadece Şema (DDL) Yedekleme
-# Tablo yapıları, indeksler, trigger'lar, fonksiyonlar
-# ============================================================================
 echo -e "\n${YELLOW}[1/5] Sadece Şema (DDL) Yedekleme${NC}"
 BACKUP_SCHEMA="$BACKUP_DIR/differential/${DB_NAME}_schema_only_${TIMESTAMP}.sql"
 
@@ -69,10 +54,6 @@ else
     echo -e "${RED}  ✗ Şema yedekleme BAŞARISIZ!${NC}"
 fi
 
-# ============================================================================
-# 2. Sadece Veri Yedekleme
-# Tablo verileri (INSERT komutları olarak)
-# ============================================================================
 echo -e "\n${YELLOW}[2/5] Sadece Veri Yedekleme${NC}"
 BACKUP_DATA="$BACKUP_DIR/differential/${DB_NAME}_data_only_${TIMESTAMP}.sql"
 
@@ -93,13 +74,8 @@ else
     echo -e "${RED}  ✗ Veri yedekleme BAŞARISIZ!${NC}"
 fi
 
-# ============================================================================
-# 3. Tablo Bazlı Yedekleme (Belirli tablolar)
-# Sadece değişen tabloların yedeği alınır
-# ============================================================================
 echo -e "\n${YELLOW}[3/5] Tablo Bazlı Kısmi Yedekleme${NC}"
 
-# Yedeklenecek tablolar - en çok değişen tablolar
 TABLES=("siparisler" "siparis_detaylari" "odemeler" "stok_hareketleri")
 
 for TABLE in "${TABLES[@]}"; do
@@ -120,10 +96,6 @@ for TABLE in "${TABLES[@]}"; do
     fi
 done
 
-# ============================================================================
-# 4. Son N Günde Değişen Verilerin Yedeklenmesi
-# Koşullu veri yedekleme - tarih filtresiyle
-# ============================================================================
 echo -e "\n${YELLOW}[4/5] Son 7 Günde Değişen Verilerin Yedeği${NC}"
 BACKUP_RECENT="$BACKUP_DIR/differential/${DB_NAME}_recent_changes_${TIMESTAMP}.sql"
 DAYS_AGO=7
@@ -143,14 +115,9 @@ RECENT_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT COUNT(*) FROM s
 echo -e "${GREEN}  ✓ Son $DAYS_AGO günde değişen $RECENT_COUNT sipariş yedeklendi${NC}"
 echo -e "    Dosya: $BACKUP_RECENT"
 
-# ============================================================================
-# 5. Metadata ve İstatistik Bilgisi Kaydetme
-# Bir sonraki fark yedekleme için referans noktası
-# ============================================================================
 echo -e "\n${YELLOW}[5/5] Yedekleme Metadata Kaydı${NC}"
 METADATA_FILE="$BACKUP_DIR/differential/metadata_${TIMESTAMP}.json"
 
-# Tablo istatistiklerini JSON olarak kaydet
 psql -U "$DB_USER" -d "$DB_NAME" -t -A << EOSQL > "$METADATA_FILE"
 SELECT json_build_object(
     'yedek_tarih', CURRENT_TIMESTAMP,
@@ -177,9 +144,6 @@ else
     echo -e "${RED}  ✗ Metadata kaydı BAŞARISIZ!${NC}"
 fi
 
-# ============================================================================
-# ÖZET
-# ============================================================================
 echo -e "\n${CYAN}============================================${NC}"
 echo -e "${CYAN}   FARK YEDEKLEME ÖZETİ${NC}"
 echo -e "${CYAN}============================================${NC}"

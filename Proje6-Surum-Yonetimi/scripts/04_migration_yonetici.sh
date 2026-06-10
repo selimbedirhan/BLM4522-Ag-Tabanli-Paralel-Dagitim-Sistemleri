@@ -1,8 +1,4 @@
 #!/bin/bash
-# ============================================================================
-# Proje 6: Migration Yonetici Scripti
-# Surum yukseltme ve geri alma islemlerini yoneten ana script
-# ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -30,15 +26,11 @@ echo -e "${CYAN}   MIGRATION YONETICI${NC}"
 echo -e "${CYAN}   $(date '+%Y-%m-%d %H:%M:%S')${NC}"
 echo -e "${CYAN}============================================${NC}"
 
-# Mevcut surumu al
 CURRENT_VER=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "
     SELECT version_no FROM schema_version WHERE durum='basarili' ORDER BY version_id DESC LIMIT 1;
 " 2>/dev/null)
 echo -e "\n  Mevcut surum: ${BLUE}${CURRENT_VER:-1.0.0}${NC}"
 
-# ============================================================================
-# YUKSELTME: v1.0 -> v2.0
-# ============================================================================
 run_migration_v2() {
     echo -e "\n${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${MAGENTA}  YUKSELTME: v1.0.0 -> v2.0.0${NC}"
@@ -65,7 +57,6 @@ run_migration_v2() {
         log "BASARILI: v2.0.0 ($DURATION sn)"
         echo -e "\n  ${GREEN}Migration basarili!${NC} (${DURATION}sn)"
         
-        # Sure kaydi
         psql -U "$DB_USER" -d "$DB_NAME" -c "
             UPDATE schema_version SET sure_ms = ${DURATION}000 WHERE version_no = '2.0.0';
         " > /dev/null 2>&1
@@ -76,9 +67,6 @@ run_migration_v2() {
     fi
 }
 
-# ============================================================================
-# YUKSELTME: v2.0 -> v3.0
-# ============================================================================
 run_migration_v3() {
     echo -e "\n${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${MAGENTA}  YUKSELTME: v2.0.0 -> v3.0.0${NC}"
@@ -115,9 +103,6 @@ run_migration_v3() {
     fi
 }
 
-# ============================================================================
-# GERI ALMA (ROLLBACK)
-# ============================================================================
 run_rollback_v2() {
     echo -e "\n${YELLOW}Rollback: v2.0 -> v1.0${NC}"
     log "ROLLBACK: v2.0 -> v1.0"
@@ -132,11 +117,6 @@ run_rollback_v3() {
     [ $? -eq 0 ] && echo -e "  ${GREEN}Rollback basarili${NC}" || echo -e "  ${RED}Rollback basarisiz${NC}"
 }
 
-# ============================================================================
-# SIRASIYLA CALISTIR
-# ============================================================================
-
-# v1 -> v2
 if [ "$CURRENT_VER" = "1.0.0" ] || [ -z "$CURRENT_VER" ]; then
     run_migration_v2
     if [ $? -ne 0 ]; then
@@ -145,7 +125,6 @@ if [ "$CURRENT_VER" = "1.0.0" ] || [ -z "$CURRENT_VER" ]; then
     fi
 fi
 
-# v2 -> v3
 CURRENT_VER=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "
     SELECT version_no FROM schema_version WHERE durum='basarili' ORDER BY version_id DESC LIMIT 1;
 " 2>/dev/null)
@@ -154,9 +133,6 @@ if [ "$CURRENT_VER" = "2.0.0" ]; then
     run_migration_v3
 fi
 
-# ============================================================================
-# YUKSELTME SONRASI DURUM
-# ============================================================================
 echo -e "\n${CYAN}============================================${NC}"
 echo -e "${CYAN}   SURUM GECMISI${NC}"
 echo -e "${CYAN}============================================${NC}"

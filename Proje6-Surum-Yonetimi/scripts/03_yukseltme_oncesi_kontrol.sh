@@ -1,8 +1,4 @@
 #!/bin/bash
-# ============================================================================
-# Proje 6: Yukseltme Oncesi Kontrol Scripti
-# Yukseltme yapilmadan once uyumluluk ve hazirlik kontrolu
-# ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -44,9 +40,6 @@ echo -e "${CYAN}   YUKSELTME ONCESI KONTROL${NC}"
 echo -e "${CYAN}   $(date '+%Y-%m-%d %H:%M:%S')${NC}"
 echo -e "${CYAN}============================================${NC}"
 
-# ============================================================================
-# 1. BAGLANTI KONTROLU
-# ============================================================================
 echo -e "\n${YELLOW}[1/7] Baglanti Kontrolu${NC}"
 
 pg_isready -q 2>/dev/null
@@ -55,9 +48,6 @@ check "PostgreSQL sunucusu erisilebilir" $?
 psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1;" > /dev/null 2>&1
 check "Veritabani baglantisi ($DB_NAME)" $?
 
-# ============================================================================
-# 2. MEVCUT SURUM BILGISI
-# ============================================================================
 echo -e "\n${YELLOW}[2/7] Mevcut Surum Bilgisi${NC}"
 
 CURRENT_VER=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "
@@ -80,9 +70,6 @@ psql -U "$DB_USER" -d "$DB_NAME" -c "
     FROM schema_version ORDER BY version_id;
 " 2>/dev/null
 
-# ============================================================================
-# 3. VERITABANI DURUMU
-# ============================================================================
 echo -e "\n${YELLOW}[3/7] Veritabani Durumu${NC}"
 
 DB_SIZE=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT pg_size_pretty(pg_database_size('$DB_NAME'));" 2>/dev/null)
@@ -106,12 +93,8 @@ FN_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "
 " 2>/dev/null)
 echo -e "  Fonksiyon sayisi: ${BLUE}$FN_COUNT${NC}"
 
-# ============================================================================
-# 4. VERI BUTUNLUGU
-# ============================================================================
 echo -e "\n${YELLOW}[4/7] Veri Butunlugu Kontrolu${NC}"
 
-# FK ihlali
 FK_VIOLATIONS=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "
     SELECT COUNT(*) FROM odunc_islemleri oi
     LEFT JOIN kitaplar k ON oi.kitap_id = k.kitap_id
@@ -119,19 +102,14 @@ FK_VIOLATIONS=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "
 " 2>/dev/null)
 [ "$FK_VIOLATIONS" = "0" ] && check "Foreign key butunlugu" 0 || check "FK ihlali: $FK_VIOLATIONS" 1
 
-# Null kontrol
 NULL_ISBN=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT COUNT(*) FROM kitaplar WHERE isbn IS NULL;" 2>/dev/null)
 [ "$NULL_ISBN" = "0" ] && check "ISBN bos kayit yok" 0 || warn "$NULL_ISBN kitapta ISBN bos"
 
-# Duplicate kontrol
 DUP_ISBN=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "
     SELECT COUNT(*) FROM (SELECT isbn FROM kitaplar GROUP BY isbn HAVING COUNT(*)>1) t;
 " 2>/dev/null)
 [ "$DUP_ISBN" = "0" ] && check "Tekrarlanan ISBN yok" 0 || warn "$DUP_ISBN tekrarlanan ISBN"
 
-# ============================================================================
-# 5. AKTIF ISLEMLER
-# ============================================================================
 echo -e "\n${YELLOW}[5/7] Aktif Islemler${NC}"
 
 ACTIVE_CONN=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "
@@ -149,9 +127,6 @@ else
     check "Calisan uzun sorgu yok" 0
 fi
 
-# ============================================================================
-# 6. DISK ALANI
-# ============================================================================
 echo -e "\n${YELLOW}[6/7] Disk Alani${NC}"
 
 DISK_AVAIL=$(df -h "$PROJECT_DIR" 2>/dev/null | tail -1 | awk '{print $4}')
@@ -166,9 +141,6 @@ else
     check "Yeterli disk alani" 0
 fi
 
-# ============================================================================
-# 7. YUKSELTME ONCESI YEDEK
-# ============================================================================
 echo -e "\n${YELLOW}[7/7] Yukseltme Oncesi Yedek${NC}"
 
 BACKUP_FILE="$BACKUP_DIR/pre_upgrade_${CURRENT_VER}_${TIMESTAMP}.dump"
@@ -180,9 +152,6 @@ else
     check "Yukseltme oncesi yedek" 1
 fi
 
-# ============================================================================
-# SONUC
-# ============================================================================
 TOTAL=$((PASS + FAIL + WARN))
 echo -e "\n${CYAN}============================================${NC}"
 echo -e "${CYAN}   KONTROL SONUCU${NC}"

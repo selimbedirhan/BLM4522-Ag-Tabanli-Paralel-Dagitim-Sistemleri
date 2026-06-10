@@ -1,8 +1,3 @@
--- ============================================================================
--- MIGRATION: v2.0 -> v3.0
--- Yeni: etkinlik sistemi, dijital kitap destegi, okuma gecmisi istatistik,
--- gelismis arama, performans optimizasyonlari
--- ============================================================================
 
 \c kutuphane_db;
 
@@ -18,9 +13,6 @@ END $$;
 
 BEGIN;
 
--- ============================================================================
--- 1. YENI TABLO: Dijital Kitaplar (e-kitap/sesli kitap)
--- ============================================================================
 CREATE TABLE dijital_kitaplar (
     dijital_id SERIAL PRIMARY KEY,
     kitap_id INTEGER REFERENCES kitaplar(kitap_id),
@@ -32,7 +24,6 @@ CREATE TABLE dijital_kitaplar (
     ekleme_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. YENI TABLO: Etkinlikler
 CREATE TABLE etkinlikler (
     etkinlik_id SERIAL PRIMARY KEY,
     etkinlik_adi VARCHAR(200) NOT NULL,
@@ -48,7 +39,6 @@ CREATE TABLE etkinlikler (
     olusturma_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. YENI TABLO: Etkinlik Katilim
 CREATE TABLE etkinlik_katilim (
     katilim_id SERIAL PRIMARY KEY,
     etkinlik_id INTEGER NOT NULL REFERENCES etkinlikler(etkinlik_id),
@@ -59,7 +49,6 @@ CREATE TABLE etkinlik_katilim (
     UNIQUE(etkinlik_id, uye_id)
 );
 
--- 4. YENI TABLO: Kitap Degerlendirmeleri
 CREATE TABLE degerlendirmeler (
     degerlendirme_id SERIAL PRIMARY KEY,
     kitap_id INTEGER NOT NULL REFERENCES kitaplar(kitap_id),
@@ -70,7 +59,6 @@ CREATE TABLE degerlendirmeler (
     UNIQUE(kitap_id, uye_id)
 );
 
--- 5. YENI TABLO: Bildirimler
 CREATE TABLE bildirimler (
     bildirim_id SERIAL PRIMARY KEY,
     uye_id INTEGER NOT NULL REFERENCES uyeler(uye_id),
@@ -81,9 +69,6 @@ CREATE TABLE bildirimler (
     tarih TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ============================================================================
--- MEVCUT TABLOLARI GUNCELLE
--- ============================================================================
 ALTER TABLE kitaplar ADD COLUMN ort_puan DECIMAL(3,2) DEFAULT 0;
 ALTER TABLE kitaplar ADD COLUMN degerlendirme_sayisi INTEGER DEFAULT 0;
 ALTER TABLE kitaplar ADD COLUMN dijital_mevcut BOOLEAN DEFAULT FALSE;
@@ -92,9 +77,6 @@ ALTER TABLE uyeler ADD COLUMN toplam_odunc INTEGER DEFAULT 0;
 ALTER TABLE uyeler ADD COLUMN gecikme_sayisi INTEGER DEFAULT 0;
 ALTER TABLE uyeler ADD COLUMN puan INTEGER DEFAULT 0;
 
--- ============================================================================
--- YENI INDEKSLER VE PERFORMANS
--- ============================================================================
 CREATE INDEX idx_dijital_kitap ON dijital_kitaplar(kitap_id);
 CREATE INDEX idx_etkinlik_tarih ON etkinlikler(etkinlik_tarihi);
 CREATE INDEX idx_degerlendirme_kitap ON degerlendirmeler(kitap_id);
@@ -102,12 +84,8 @@ CREATE INDEX idx_degerlendirme_puan ON degerlendirmeler(puan);
 CREATE INDEX idx_bildirim_uye ON bildirimler(uye_id);
 CREATE INDEX idx_bildirim_okunmamis ON bildirimler(uye_id) WHERE okundu = FALSE;
 
--- Partitioning icin odunc_islemleri uzerinde tarih indeksi
 CREATE INDEX idx_odunc_tarih ON odunc_islemleri(odunc_tarihi);
 
--- ============================================================================
--- GELISMIS GORUNUMLER
--- ============================================================================
 CREATE OR REPLACE VIEW v_kutuphane_istatistik AS
 SELECT
     (SELECT COUNT(*) FROM kitaplar) AS toplam_kitap,
@@ -129,9 +107,6 @@ LEFT JOIN odunc_islemleri oi ON k.kitap_id = oi.kitap_id
 GROUP BY k.kitap_id, k.baslik, y.ad, y.soyad, k.ort_puan, k.degerlendirme_sayisi
 ORDER BY odunc_sayisi DESC;
 
--- ============================================================================
--- TRIGGER: Degerlendirme eklenince ortalama guncelle
--- ============================================================================
 CREATE OR REPLACE FUNCTION fn_puan_guncelle()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -147,10 +122,6 @@ CREATE TRIGGER trg_puan_guncelle
     AFTER INSERT OR UPDATE ON degerlendirmeler
     FOR EACH ROW EXECUTE FUNCTION fn_puan_guncelle();
 
--- ============================================================================
--- ORNEK VERI
--- ============================================================================
--- Dijital kitaplar
 INSERT INTO dijital_kitaplar (kitap_id, format, dosya_boyutu_mb, indirme_sayisi)
 SELECT kitap_id,
     (ARRAY['epub','pdf','ses','interaktif'])[1 + (kitap_id % 4)],
@@ -160,7 +131,6 @@ FROM kitaplar WHERE kitap_id <= 80;
 
 UPDATE kitaplar SET dijital_mevcut = TRUE WHERE kitap_id <= 80;
 
--- Etkinlikler
 INSERT INTO etkinlikler (etkinlik_adi, aciklama, etkinlik_tarihi, mekan, kontenjan, etkinlik_tipi, durum)
 SELECT
     (ARRAY['Yazar Soylesi','Kitap Tanitimi','Okuma Kulubu','Siir Dinletisi','Cocuk Atolyesi'])[1 + (i % 5)]
@@ -173,7 +143,6 @@ SELECT
     (ARRAY['planlanmis','aktif','tamamlandi'])[1 + (i % 3)]
 FROM generate_series(1, 20) AS s(i);
 
--- Degerlendirmeler
 INSERT INTO degerlendirmeler (kitap_id, uye_id, puan, yorum)
 SELECT 1 + (i % 200), 1 + (i % 400),
     1 + (i % 5),
@@ -181,7 +150,6 @@ SELECT 1 + (i % 200), 1 + (i % 400),
 FROM generate_series(1, 500) AS s(i)
 ON CONFLICT (kitap_id, uye_id) DO NOTHING;
 
--- Bildirimler
 INSERT INTO bildirimler (uye_id, baslik, mesaj, bildirim_tipi, okundu)
 SELECT 1 + (i % 400),
     (ARRAY['Iade Hatirlatma','Ceza Bildirimi','Rezervasyon Onay','Etkinlik Davet','Duyuru'])[1 + (i % 5)],
@@ -190,12 +158,10 @@ SELECT 1 + (i % 400),
     i % 3 = 0
 FROM generate_series(1, 600) AS s(i);
 
--- Uye istatistiklerini guncelle
 UPDATE uyeler u SET
     toplam_odunc = (SELECT COUNT(*) FROM odunc_islemleri WHERE uye_id = u.uye_id),
     gecikme_sayisi = (SELECT COUNT(*) FROM odunc_islemleri WHERE uye_id = u.uye_id AND durum = 'gecikti');
 
--- Surum kaydi
 INSERT INTO schema_version (version_no, aciklama, migration_dosya, geri_alma_dosya)
 VALUES ('3.0.0', 'Dijital kitaplar, etkinlikler, degerlendirmeler, bildirimler, istatistik view',
         'v2_to_v3_migration.sql', 'v3_to_v2_rollback.sql');

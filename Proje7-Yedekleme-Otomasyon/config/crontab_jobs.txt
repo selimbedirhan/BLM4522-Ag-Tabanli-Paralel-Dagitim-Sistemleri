@@ -1,0 +1,23 @@
+# ============================================================================
+# Proje 7: Cron Zamanlayici Tanimlari
+# SQL Server Agent yerine Cron ile otomatik yedekleme zamanlayicilari
+# ============================================================================
+# Format: dakika saat gun ay hafta_gunu komut
+# ============================================================================
+
+SCRIPT_PATH=/Users/selimbedirhanozturk/Desktop/DERSLER/BLM4522\ Ag\ Tabanli\ Paralel\ Dagitim\ Sistemleri/Proje7-Yedekleme-Otomasyon/scripts
+
+# Gunluk otomatik yedekleme - Her gun saat 02:00
+0 2 * * * bash "$SCRIPT_PATH/04_otomatik_yedekleme.sh" >> "$SCRIPT_PATH/../logs/cron_daily.log" 2>&1
+
+# Gunluk yedek dogrulama - Her gun saat 02:30
+30 2 * * * bash "$SCRIPT_PATH/09_yedek_dogrulama.sh" >> "$SCRIPT_PATH/../logs/cron_verify.log" 2>&1
+
+# Uyari kontrolu - Her gun saat 03:00
+0 3 * * * bash "$SCRIPT_PATH/07_basarisizlik_uyari.sh" >> "$SCRIPT_PATH/../logs/cron_alert.log" 2>&1
+
+# Haftalik rapor - Her Pazar 03:30
+30 3 * * 0 bash "$SCRIPT_PATH/06_yedekleme_raporlama.sh" >> "$SCRIPT_PATH/../logs/cron_report.log" 2>&1
+
+# Yedek rotasyon - Ayin 1'i saat 04:00
+0 4 1 * * bash "$SCRIPT_PATH/08_yedek_rotasyon.sh" >> "$SCRIPT_PATH/../logs/cron_rotation.log" 2>&1

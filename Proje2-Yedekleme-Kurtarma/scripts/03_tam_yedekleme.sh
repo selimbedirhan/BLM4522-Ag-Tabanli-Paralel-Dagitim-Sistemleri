@@ -1,12 +1,5 @@
 #!/bin/bash
-# ============================================================================
-# BLM4522 - Ağ Tabanlı Paralel Dağıtım Sistemleri
-# Proje 2: Veritabanı Yedekleme ve Felaketten Kurtarma Planı
-# Dosya: 03_tam_yedekleme.sh
-# Açıklama: Tam (Full) Yedekleme İşlemleri
-# ============================================================================
 
-# Renk kodları
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -14,7 +7,6 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Değişkenler
 DB_NAME="eticaret_db"
 DB_USER=$(whoami)
 BACKUP_DIR="$(cd "$(dirname "$0")/.." && pwd)/backups"
@@ -22,10 +14,8 @@ LOG_DIR="$(cd "$(dirname "$0")/.." && pwd)/logs"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 PG_BIN="/opt/homebrew/opt/postgresql@14/bin"
 
-# PATH ayarla
 export PATH="$PG_BIN:$PATH"
 
-# Dizinleri oluştur
 mkdir -p "$BACKUP_DIR/full" "$LOG_DIR"
 
 echo -e "${CYAN}============================================${NC}"
@@ -33,7 +23,6 @@ echo -e "${CYAN}   TAM (FULL) YEDEKLEME İŞLEMLERİ${NC}"
 echo -e "${CYAN}   Tarih: $(date '+%Y-%m-%d %H:%M:%S')${NC}"
 echo -e "${CYAN}============================================${NC}"
 
-# Fonksiyon: Yedekleme boyutunu formatla
 format_size() {
     local size=$1
     if [ "$size" -gt 1048576 ]; then
@@ -45,10 +34,6 @@ format_size() {
     fi
 }
 
-# ============================================================================
-# 1. Custom Format Yedekleme (pg_dump -Fc)
-# En verimli format, sıkıştırma dahil, seçici geri yükleme destekler
-# ============================================================================
 echo -e "\n${YELLOW}[1/4] Custom Format Yedekleme (pg_dump -Fc)${NC}"
 BACKUP_FILE_CUSTOM="$BACKUP_DIR/full/${DB_NAME}_full_custom_${TIMESTAMP}.dump"
 
@@ -70,10 +55,6 @@ else
     echo -e "${RED}  ✗ Custom format yedekleme BAŞARISIZ!${NC}"
 fi
 
-# ============================================================================
-# 2. Plain SQL Format Yedekleme (pg_dump -Fp)
-# Okunabilir SQL dosyası, herhangi bir PostgreSQL sürümüne restore edilebilir
-# ============================================================================
 echo -e "\n${YELLOW}[2/4] Plain SQL Format Yedekleme (pg_dump -Fp)${NC}"
 BACKUP_FILE_SQL="$BACKUP_DIR/full/${DB_NAME}_full_plain_${TIMESTAMP}.sql"
 
@@ -95,10 +76,6 @@ else
     echo -e "${RED}  ✗ Plain SQL yedekleme BAŞARISIZ!${NC}"
 fi
 
-# ============================================================================
-# 3. Sıkıştırılmış SQL Yedekleme (pg_dump + gzip)
-# Disk alanı tasarrufu için SQL çıktısını gzip ile sıkıştırma
-# ============================================================================
 echo -e "\n${YELLOW}[3/4] Sıkıştırılmış SQL Yedekleme (gzip)${NC}"
 BACKUP_FILE_GZIP="$BACKUP_DIR/full/${DB_NAME}_full_compressed_${TIMESTAMP}.sql.gz"
 
@@ -119,10 +96,6 @@ else
     echo -e "${RED}  ✗ Sıkıştırılmış yedekleme BAŞARISIZ!${NC}"
 fi
 
-# ============================================================================
-# 4. Tar Format Yedekleme (pg_dump -Ft)
-# Tar arşiv formatı, birden fazla dosya olarak saklar
-# ============================================================================
 echo -e "\n${YELLOW}[4/4] Tar Format Yedekleme (pg_dump -Ft)${NC}"
 BACKUP_FILE_TAR="$BACKUP_DIR/full/${DB_NAME}_full_tar_${TIMESTAMP}.tar"
 
@@ -143,9 +116,6 @@ else
     echo -e "${RED}  ✗ Tar format yedekleme BAŞARISIZ!${NC}"
 fi
 
-# ============================================================================
-# KARŞILAŞTIRMA TABLOSU
-# ============================================================================
 echo -e "\n${CYAN}============================================${NC}"
 echo -e "${CYAN}   YEDEKLEME KARŞILAŞTIRMA TABLOSU${NC}"
 echo -e "${CYAN}============================================${NC}"

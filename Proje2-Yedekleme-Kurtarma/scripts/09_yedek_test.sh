@@ -1,12 +1,5 @@
 #!/bin/bash
-# ============================================================================
-# BLM4522 - Ağ Tabanlı Paralel Dağıtım Sistemleri
-# Proje 2: Veritabanı Yedekleme ve Felaketten Kurtarma Planı
-# Dosya: 09_yedek_test.sh
-# Açıklama: Yedeklerin Doğruluğunu Test Etme
-# ============================================================================
 
-# Renk kodları
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -15,7 +8,6 @@ CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m'
 
-# Değişkenler
 DB_NAME="eticaret_db"
 DB_USER=$(whoami)
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -35,7 +27,6 @@ echo -e "${CYAN}   YEDEK DOĞRULAMA VE TEST SİSTEMİ${NC}"
 echo -e "${CYAN}   Tarih: $(date '+%Y-%m-%d %H:%M:%S')${NC}"
 echo -e "${CYAN}============================================${NC}"
 
-# Sonuç dosyası
 cat > "$TEST_RESULTS_FILE" << EOF
 ============================================
 YEDEK DOĞRULAMA TEST SONUÇLARI
@@ -49,7 +40,6 @@ TOTAL_TESTS=0
 PASSED_TESTS=0
 FAILED_TESTS=0
 
-# Test sonucu kaydet
 record_test() {
     local test_name=$1
     local result=$2
@@ -66,12 +56,8 @@ record_test() {
     fi
 }
 
-# ============================================================================
-# TEST 1: Güncel Yedek Oluşturma
-# ============================================================================
 echo -e "\n${YELLOW}[TEST GRUBU 1] Yedek Dosyası Oluşturma Testleri${NC}"
 
-# 1.1 Custom format yedek
 echo -e "\n${BLUE}Test 1.1: Custom format yedek oluşturma${NC}"
 TEST_BACKUP="$BACKUP_DIR/full/${DB_NAME}_test_verify_${TIMESTAMP}.dump"
 mkdir -p "$BACKUP_DIR/full"
@@ -83,7 +69,6 @@ else
     record_test "Custom format yedek oluşturma" "FAIL" "Yedek oluşturulamadı"
 fi
 
-# 1.2 Plain SQL yedek
 echo -e "\n${BLUE}Test 1.2: Plain SQL yedek oluşturma${NC}"
 SQL_BACKUP="$BACKUP_DIR/full/${DB_NAME}_test_verify_${TIMESTAMP}.sql"
 pg_dump -U "$DB_USER" -d "$DB_NAME" -Fp --create --clean -f "$SQL_BACKUP" 2>> "$LOG_DIR/yedek_test_${TIMESTAMP}.log"
@@ -94,12 +79,8 @@ else
     record_test "Plain SQL yedek oluşturma" "FAIL" "Yedek oluşturulamadı"
 fi
 
-# ============================================================================
-# TEST 2: Yedek Dosyası Bütünlük Kontrolleri
-# ============================================================================
 echo -e "\n${YELLOW}[TEST GRUBU 2] Yedek Bütünlük Kontrolleri${NC}"
 
-# 2.1 pg_restore --list ile içerik doğrulama
 echo -e "\n${BLUE}Test 2.1: Yedek içerik listesi kontrolü${NC}"
 RESTORE_LIST=$(pg_restore --list "$TEST_BACKUP" 2>/dev/null)
 if [ $? -eq 0 ] && [ -n "$RESTORE_LIST" ]; then
@@ -117,7 +98,6 @@ else
     record_test "Yedek içerik doğrulama" "FAIL" "İçerik listesi alınamadı"
 fi
 
-# 2.2 Dosya boyutu kontrolü (sıfır olmadığından emin ol)
 echo -e "\n${BLUE}Test 2.2: Dosya boyutu kontrolü${NC}"
 DUMP_SIZE=$(stat -f%z "$TEST_BACKUP" 2>/dev/null || stat --printf="%s" "$TEST_BACKUP" 2>/dev/null)
 if [ "$DUMP_SIZE" -gt 1000 ]; then
@@ -126,7 +106,6 @@ else
     record_test "Yedek dosya boyutu kontrolü" "FAIL" "Dosya çok küçük: $DUMP_SIZE bytes"
 fi
 
-# 2.3 SQL dosyası syntax kontrolü
 echo -e "\n${BLUE}Test 2.3: SQL dosyası içerik kontrolü${NC}"
 HAS_CREATE=$(grep -c "CREATE TABLE" "$SQL_BACKUP" 2>/dev/null)
 HAS_INSERT=$(grep -c "INSERT\|COPY" "$SQL_BACKUP" 2>/dev/null)
@@ -136,16 +115,11 @@ else
     record_test "SQL içerik kontrolü" "FAIL" "CREATE veya INSERT komutları eksik"
 fi
 
-# ============================================================================
-# TEST 3: Yedekten Geri Yükleme Testleri
-# ============================================================================
 echo -e "\n${YELLOW}[TEST GRUBU 3] Geri Yükleme (Restore) Testleri${NC}"
 
-# Test veritabanı oluştur
 psql -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $TEST_DB;" 2>/dev/null
 psql -U "$DB_USER" -d postgres -c "CREATE DATABASE $TEST_DB;" 2>> "$LOG_DIR/yedek_test_${TIMESTAMP}.log"
 
-# 3.1 Custom format restore
 echo -e "\n${BLUE}Test 3.1: Custom format geri yükleme${NC}"
 START_TIME=$(date +%s)
 pg_restore -U "$DB_USER" -d "$TEST_DB" \
@@ -162,7 +136,6 @@ else
     record_test "Custom format geri yükleme" "FAIL" "Exit code: $RESTORE_RESULT"
 fi
 
-# 3.2 Kayıt sayısı karşılaştırması
 echo -e "\n${BLUE}Test 3.2: Kayıt sayısı karşılaştırması${NC}"
 TABLES=("kategoriler" "tedarikciler" "musteriler" "urunler" "siparisler" "siparis_detaylari" "odemeler" "stok_hareketleri")
 MATCH_COUNT=0
@@ -192,12 +165,8 @@ else
     record_test "Kayıt sayısı eşleşmesi" "FAIL" "$MISMATCH_COUNT tablo farklı"
 fi
 
-# ============================================================================
-# TEST 4: Veri Bütünlüğü Testleri
-# ============================================================================
 echo -e "\n${YELLOW}[TEST GRUBU 4] Veri Bütünlüğü Testleri${NC}"
 
-# 4.1 Foreign key ilişkileri
 echo -e "\n${BLUE}Test 4.1: Foreign key ilişkileri kontrolü${NC}"
 FK_COUNT=$(psql -U "$DB_USER" -d "$TEST_DB" -t -A << EOSQL 2>/dev/null
 SELECT COUNT(*) FROM information_schema.table_constraints 
@@ -215,7 +184,6 @@ else
     record_test "Foreign key ilişkileri" "FAIL" "Orijinal: $ORIG_FK_COUNT, Restore: $FK_COUNT"
 fi
 
-# 4.2 İndeks kontrolü
 echo -e "\n${BLUE}Test 4.2: İndeks kontrolü${NC}"
 IDX_COUNT=$(psql -U "$DB_USER" -d "$TEST_DB" -t -A << EOSQL 2>/dev/null
 SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public';
@@ -231,7 +199,6 @@ else
     record_test "İndeks sayısı eşleşmesi" "FAIL" "Orijinal: $ORIG_IDX_COUNT, Restore: $IDX_COUNT"
 fi
 
-# 4.3 View kontrolü
 echo -e "\n${BLUE}Test 4.3: View (Görünüm) kontrolü${NC}"
 VIEW_COUNT=$(psql -U "$DB_USER" -d "$TEST_DB" -t -A << EOSQL 2>/dev/null
 SELECT COUNT(*) FROM information_schema.views WHERE table_schema = 'public';
@@ -247,7 +214,6 @@ else
     record_test "View sayısı eşleşmesi" "FAIL" "Orijinal: $ORIG_VIEW_COUNT, Restore: $VIEW_COUNT"
 fi
 
-# 4.4 Trigger/Function kontrolü
 echo -e "\n${BLUE}Test 4.4: Trigger ve Fonksiyon kontrolü${NC}"
 FUNC_COUNT=$(psql -U "$DB_USER" -d "$TEST_DB" -t -A << EOSQL 2>/dev/null
 SELECT COUNT(*) FROM information_schema.routines WHERE routine_schema = 'public';
@@ -263,7 +229,6 @@ else
     record_test "Fonksiyon sayısı eşleşmesi" "FAIL" "Orijinal: $ORIG_FUNC_COUNT, Restore: $FUNC_COUNT"
 fi
 
-# 4.5 Veri doğruluk kontrolü (checksum benzeri)
 echo -e "\n${BLUE}Test 4.5: Veri doğruluğu (toplam/ortalama kontrolü)${NC}"
 ORIG_SUM=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT ROUND(SUM(birim_fiyat), 2) FROM urunler;" 2>/dev/null)
 REST_SUM=$(psql -U "$DB_USER" -d "$TEST_DB" -t -A -c "SELECT ROUND(SUM(birim_fiyat), 2) FROM urunler;" 2>/dev/null)
@@ -273,12 +238,8 @@ else
     record_test "Ürün fiyat toplamı kontrolü" "FAIL" "Orijinal: ₺$ORIG_SUM, Restore: ₺$REST_SUM"
 fi
 
-# ============================================================================
-# TEST 5: Performans Testi
-# ============================================================================
 echo -e "\n${YELLOW}[TEST GRUBU 5] Yedekleme/Geri Yükleme Performans Testleri${NC}"
 
-# 5.1 Yedekleme süresi
 echo -e "\n${BLUE}Test 5.1: Yedekleme performansı${NC}"
 START_TIME=$(date +%s%N)
 pg_dump -U "$DB_USER" -d "$DB_NAME" -Fc -Z 6 -f /dev/null 2>/dev/null
@@ -287,7 +248,6 @@ BACKUP_TIME_MS=$(( (END_TIME - START_TIME) / 1000000 ))
 record_test "Yedekleme performansı" "PASS" "Süre: ${BACKUP_TIME_MS}ms"
 echo -e "    Yedekleme süresi: ${BACKUP_TIME_MS}ms"
 
-# 5.2 Veritabanı boyutu
 echo -e "\n${BLUE}Test 5.2: Veritabanı boyutu raporu${NC}"
 DB_SIZE=$(psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "SELECT pg_size_pretty(pg_database_size('$DB_NAME'));" 2>/dev/null)
 DUMP_SIZE_HR=$(ls -lh "$TEST_BACKUP" 2>/dev/null | awk '{print $5}')
@@ -295,16 +255,10 @@ echo -e "    Veritabanı boyutu: $DB_SIZE"
 echo -e "    Yedek boyutu: $DUMP_SIZE_HR"
 record_test "Boyut raporu" "PASS" "DB: $DB_SIZE, Yedek: $DUMP_SIZE_HR"
 
-# ============================================================================
-# Temizlik
-# ============================================================================
 echo -e "\n${YELLOW}Temizlik yapılıyor...${NC}"
 psql -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $TEST_DB;" 2>/dev/null
 echo -e "${GREEN}  ✓ Test veritabanı temizlendi${NC}"
 
-# ============================================================================
-# SONUÇ RAPORU
-# ============================================================================
 echo -e "\n${CYAN}============================================${NC}"
 echo -e "${CYAN}   TEST SONUÇ RAPORU${NC}"
 echo -e "${CYAN}============================================${NC}"
@@ -321,7 +275,6 @@ else
     echo -e "\n  ${YELLOW}⚠ Başarı oranı: %$PASS_RATE${NC}"
 fi
 
-# Sonuç dosyasına yaz
 cat >> "$TEST_RESULTS_FILE" << EOF
 
 ============================================
